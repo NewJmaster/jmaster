@@ -1,17 +1,5 @@
-pcall(function()
-    print("Executing Script 1: Anticheat")
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/NewJmaster/jmaster/refs/heads/main/inkgameanticheat2(not%20main)", true))()
-    print("Cheat bypass 1")
-end)
 
-task.spawn(function()
-    pcall(function()
-        if not hookmetamethod then 
-            print("Condition for Script 2 not met, skipping.")
-            return 
-        end
-        print("Executing Script 2: Reduce")
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/vividx07/nova-softworks/refs/heads/main/ink_game/reduce.lua", true))()
+      loadstring(game:HttpGet("https://raw.githubusercontent.com/vividx07/nova-softworks/refs/heads/main/ink_game/reduce.lua", true))()
         print("cheat bypass 2")
     end)
 end)
