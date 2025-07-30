@@ -1,0 +1,1223 @@
+
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
+local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
+
+
+-- Service Variables
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local CollectionService = game:GetService("CollectionService")
+local Lighting = game:GetService("Lighting")
+local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
+
+getgenv().isfunctionhooked = isfunctionhooked or ishooked -- delta should be supported now
+
+local key, jbremote = loadstring(game:HttpGet('https://raw.githubusercontent.com/Introvert1337/RobloxReleases/refs/heads/main/Scripts/Jailbreak/KeyFetcher.lua'))() -- credits to introvert1337
+local oldjbremote = getupvalue(network.FireServer, 1)
+
+-- Configuration table, holds the state of all features
+getgenv().configs = {
+    player = {
+        noclip = false;
+        speedEnabled = false;
+        speedValue = 16;
+        infjump = false;
+        nofall = false;
+        norag = false;
+        noislow = false;
+        nostun = false;
+        norwait = false;
+        nocslow = false;
+        nocircwait = false;
+        nopwait = false;
+        bypasskd = false;
+        alwayssilentp = false;
+        alwaysp = false;
+        juiced = false;
+        crawlequip = false;
+        backbone = false;
+        getclothes = false;
+        nospslow = false;
+    };
+    vehicle = {
+        fspeed = 10;
+        ftog = false;
+        fx = 0;
+        fy = 0;
+        fz = 0;
+        engine = false;
+        enginesp = 100;
+        brake = false;
+        brakesp = 0;
+        suspension = false;
+        suspensionhe = 10;
+        turnsp = 1;
+        turn = false;
+        nopop = false;
+        infnitro = false;
+        rinfnitro = false;
+        alwaysnit = false;
+        alwayshij = false;
+        autoflip = false;
+        helibreak = false;
+        helienginesp = 0;
+        heliengine = false;
+        instanttow = false;
+        helipick = false;
+        driveonwater = false;
+    };
+    combat = {
+        noequipt = false;
+        nospread = false;
+        norecoil = false;
+        nobulletg = false;
+        alwaysauto = false;
+        alwaysheadshot = false;
+        tasermodz = false;
+        instantrocketseek = false;
+        forcefieldnomiss = false;
+        increasetakedowndamage = false;
+        increaseforcedamage = false;
+        silentaim = {
+            enabled = false;
+            includetaser = false;
+            includeplasma = false;
+            radius = 250;
+            wallcheck = false;
+        };
+        batonsword = {
+            spamlunge = false;
+            spamswoosh = false;
+        };
+    };
+    visuals = {
+        esp_enabled = false,
+        esp_police = true,
+        esp_criminal = true,
+        esp_prisoner = true,
+        esp_police_color = Color3.fromRGB(0, 120, 255),
+        esp_criminal_color = Color3.fromRGB(255, 80, 80),
+        esp_prisoner_color = Color3.fromRGB(255, 165, 0),
+        esp_box = true,
+        esp_box_size = 20,
+        esp_name = true,
+        esp_name_size = 14,
+        esp_distance = true,
+        esp_distance_size = 14,
+        esp_lines = false,
+        esp_chams = false,
+        esp_chams_transparency = 0.5,
+        nosky = false,
+        snipernoblur = false,
+        nogrenadesmoke = false
+    };
+    robberies = {
+        guardnodmg = false;
+    };
+    nametags = {};
+}
+
+-- [ The extensive 'client' table and its associated functions from the original script are included here. ]
+local client = {
+    ropedata = {};
+    lastvehiclestats = {
+        GarageEngineSpeed = nil;
+        Height = nil;
+        TurnSpeed = nil;
+    };
+    lastvehiclemodel = nil;
+    vehicleEntered = false;
+    originalequippeddata = {};
+    doorAddedFunction = getconnections(CollectionService:GetInstanceAddedSignal("Door"))[1].Function;
+    remoteid = {
+        punch = key.Punch;
+        taser = key.Taze;
+    };
+    activeaction = {};
+    ori = {
+        updateseeking = require(ReplicatedStorage.VehicleLink.VehicleLinkBinder)._constructor._updateSeeking;
+        hittargetwithspeed = require(ReplicatedStorage.Module.SimulatedPhysicsProjectile).HitTargetWithSpeed;
+        isflying = require(ReplicatedStorage.Game.Paraglide).IsFlying;
+        tase = require(ReplicatedStorage.Game.Item.Taser).Tase;
+        doesplayerowncached = require(ReplicatedStorage.Game.Gamepass.GamepassSystem).doesPlayerOwnCached;
+        update = require(ReplicatedStorage.Module.UI).CircleAction.Update;
+        getequiptime = require(ReplicatedStorage.Game.GunShop.GunUtils).getEquipTime;
+        rayignorenon = require(ReplicatedStorage.Module.RayCast).RayIgnoreNonCollide;
+        plasmashootother = require(ReplicatedStorage.Game.Item.PlasmaGun).ShootOther;
+        pistolsetupmodel = require(ReplicatedStorage.Game.Item.Pistol).SetupModel;
+        rayignore = require(ReplicatedStorage.Module.RayCast).RayIgnoreNonCollideWithIgnoreList;
+        shoot = require(ReplicatedStorage.Game.Item.Gun).Shoot;
+        attemptToggleCrawling = getupvalue(require(ReplicatedStorage.Game.DefaultActions).crawlButton.onPressed,1).attemptToggleCrawling;
+    };
+    guardnpcbinder = require(ReplicatedStorage.GuardNPC.GuardNPCBinder);
+    combatconst = require(ReplicatedStorage.Combat.CombatConsts);
+    combatutils = require(ReplicatedStorage.Combat.CombatUtils);
+    playerutil = require(ReplicatedStorage.Game.PlayerUtils);
+    actionbuttonservice = require(ReplicatedStorage.ActionButton.ActionButtonService);
+    settingss = require(ReplicatedStorage.Resource.Settings);
+    characterutil = require(ReplicatedStorage.Game.CharacterUtil);
+    paraglide = require(ReplicatedStorage.Game.Paraglide);
+    alexchassis = require(ReplicatedStorage.Module.AlexChassis);
+    itemgun = require(ReplicatedStorage.Game.Item.Gun);
+    itemsys = require(ReplicatedStorage.Game.ItemSystem.ItemSystem);
+    gunutil = require(ReplicatedStorage.Game.GunShop.GunUtils);
+    gamepasssystem = require(ReplicatedStorage.Game.Gamepass.GamepassSystem);
+    pistolitem = require(ReplicatedStorage.Game.Item.Pistol);
+    smokegrenadeitem = require(ReplicatedStorage.Game.SmokeGrenade.SmokeGrenade);
+    circleac = require(ReplicatedStorage.Module.UI).CircleAction;
+    tase = require(ReplicatedStorage.Game.Item.Taser);
+    plasmagun = require(ReplicatedStorage.Game.Item.PlasmaGun);
+    duck = require(ReplicatedStorage.Game.Robbery.TombRobbery.TombRobberySystem).duck;
+    onvehicleentered = require(ReplicatedStorage.Vehicle.VehicleUtils).OnVehicleEntered;
+    onvehicleexited = require(ReplicatedStorage.Vehicle.VehicleUtils).OnVehicleExited;
+    onlocalitemequipped = require(ReplicatedStorage.Game.ItemSystem.ItemSystem).OnLocalItemEquipped;
+    onlocalitemunequipped = require(ReplicatedStorage.Game.ItemSystem.ItemSystem).OnLocalItemUnequipped;
+    bulletonlocalhitplayer = require(ReplicatedStorage.Game.Item.Gun).BulletEmitterOnLocalHitPlayer;
+    vehiclelinkbinder = require(ReplicatedStorage.VehicleLink.VehicleLinkBinder);
+    raycast = require(ReplicatedStorage.Module.RayCast);
+}
+client.door = {
+    openDoor = getupvalue(getproto(getupvalue(client.doorAddedFunction, 2), 1, true)[1], 7);
+    doors = getupvalue(client.doorAddedFunction, 1);
+}
+client.hittargetwithspeed = require(ReplicatedStorage.Module.SimulatedPhysicsProjectile).HitTargetWithSpeed
+
+
+local itemConfigClone = ReplicatedStorage.Game.ItemConfig:Clone()
+itemConfigClone.Name = "ItemConfigBackup"
+
+getgenv().Circle = Drawing.new("Circle")
+Circle.Color = Color3.new(1,1,1)
+Circle.Thickness = 1
+Circle.Radius = configs.combat.silentaim.radius
+Circle.Visible = false
+Circle.NumSides = 100
+Circle.Filled = false
+
+for i,v in next, getgc() do
+    if type(v) == "function" and islclosure(v) then
+        if tostring(getfenv(v).script) == "LocalScript" then
+            local infoname = tostring(getinfo(v).name)
+            if getconstants(v)[3] == "StartRagdolling" then
+                client.stunnedragdoll = v
+            end
+            if infoname == "AttemptArrest" then
+                client.attemptarrest = v
+            end
+            if infoname == "StartNitro" then
+                client.startnitro = v
+                client.nitro = getupvalue(v, 8)
+            end
+            if infoname == "StopNitro" then
+                client.stopnitro = v
+            end
+            if infoname:find("CheatCheck") then
+                hookfunction(v, function() end)
+            end
+        end
+    end
+end
+
+for i,v in next, getconnections(RunService.Heartbeat) do
+    if v.Function and islclosure(v.Function) then
+        if getconstants(v.Function)[13] == "Time/UI" then
+            client.walkspeedfun = getupvalue(v.Function,6)
+        end
+        if getconstants(v.Function)[3] == "Vehicle Heartbeat" then
+            client.heli = getupvalue(v.Function,1).Heli
+            client.ori.heliupdate = client.heli.Update
+        end
+    end
+end
+
+for i,v in next, client.actionbuttonservice.active do
+    if table.find(v.keyCodes, Enum.KeyCode.V) then
+        client.activeaction.flip = v
+    end
+    if table.find(v.keyCodes, Enum.KeyCode.LeftControl) then
+        client.activeaction.roll = v
+    end
+end
+
+client.punchCorrection = (function()
+    repeat
+        if configs.player.alwayssilentp == true then
+            task.wait(0.5)
+            getupvalue(require(ReplicatedStorage.Game.DefaultActions).punchButton.onPressed,1).attemptPunch()
+        else
+            task.wait(0.3)
+            jbremote:FireServer(client.remoteid.punch)
+        end
+    until configs.player.alwaysp == false
+end)
+client.duckCorrection = (function()
+    repeat
+        client.duck()
+        task.wait(2)
+    until configs.player.backbone == false
+end)
+
+client.flipCorrection = (function()
+    repeat task.wait(.1)
+        pcall(function()
+            for i,v in next, client.actionbuttonservice.active do
+                if table.find(v.keyCodes, Enum.KeyCode.V) then
+                    v.onPressed(true)
+                end
+            end
+        end)
+    until configs.vehicle.autoflip == false
+end)
+
+client.hasKeyCorrection = (function(boolean)
+    if boolean then
+        hookfunction(client.playerutil.hasKey, function()
+            return true
+        end)
+    else
+        if isfunctionhooked(client.playerutil.hasKey) then restorefunction(client.playerutil.hasKey) end
+    end
+end)
+client.headshotCorrection = (function(boolean)
+    if boolean then
+        epichook = hookfunction(client.bulletonlocalhitplayer, function(...)
+            local bulletshot = {...}
+            bulletshot[15].isWallbang = false
+            bulletshot[15].isHeadshot = true
+            return epichook(...)
+        end)
+    else
+        if isfunctionhooked(client.bulletonlocalhitplayer) then restorefunction(client.bulletonlocalhitplayer) end
+    end
+end)
+client.smokeGrenadeHook = (function(boolean)
+    if boolean then
+        hookfunction(client.smokegrenadeitem._playExplosionFx, function() end)
+    else
+        if isfunctionhooked(client.smokegrenadeitem._playExplosionFx) then restorefunction(client.smokegrenadeitem._playExplosionFx) end
+    end
+end)
+client.isCrawlingCorrection = (function()
+    repeat task.wait(.1)
+        client.characterutil.IsCrawling = false
+    until configs.player.crawlequip == false
+end)
+
+client.nitroCorrection = (function()
+    repeat task.wait()
+        if client.nitro then
+            client.nitro.NitroLastMax = 250
+            client.nitro.Nitro = configs.vehicle.rinfnitro and math.random(10, 249) or 249
+            client.nitro.NitroForceUIUpdate = true
+        end
+    until configs.vehicle.infnitro == false
+end)
+client.launchVehicleFlight = (function()
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    local hrp = char.HumanoidRootPart
+
+    local BodyGyro = Instance.new("BodyGyro", hrp)
+    local BodyVelocity = Instance.new("BodyVelocity", hrp)
+    local Camera = Workspace.CurrentCamera
+    BodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+    BodyGyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+    BodyGyro.D = 50000
+    BodyGyro.P = 1500000000
+
+    repeat task.wait()
+        BodyGyro.CFrame = Camera.CFrame * CFrame.Angles(math.rad(configs.vehicle.fx), math.rad(configs.vehicle.fy), math.rad(configs.vehicle.fz))
+        Workspace.CurrentCamera.CameraType = Enum.CameraType.Track
+        BodyVelocity.Velocity = Vector3.new()
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+            BodyVelocity.Velocity = BodyVelocity.Velocity + Camera.CFrame.LookVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+            BodyVelocity.Velocity = BodyVelocity.Velocity - Camera.CFrame.RightVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+            BodyVelocity.Velocity = BodyVelocity.Velocity - Camera.CFrame.LookVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+            BodyVelocity.Velocity = BodyVelocity.Velocity + Camera.CFrame.RightVector
+        end
+        BodyVelocity.Velocity = BodyVelocity.Velocity * configs.vehicle.fspeed
+    until client.vehicleEntered == false or configs.vehicle.ftog == false
+    Workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+    BodyGyro:Destroy()
+    BodyVelocity:Destroy()
+end)
+client.getOldWeaponData = (function(name, dataname)
+    if itemConfigClone:FindFirstChild(name) then
+        return rawget(require(itemConfigClone[name]), dataname)
+    end
+    return nil
+end)
+client.setBatonSwordTime = (function(bool)
+    local baton = require(ReplicatedStorage.Game.Item.Baton)
+    local sword = require(ReplicatedStorage.Game.Item.Sword)
+    getupvalue(baton.new,2).ReloadTime = bool and 0 or 0.5
+    getupvalue(sword.new,2).ReloadTime = bool and 0 or 0.5
+end)
+client.spamBatonSwordSwoosh = (function()
+    repeat task.wait()
+        local a = client.itemsys.GetLocalEquipped()
+        if a and (a.__ClassName == "Sword" or a.__ClassName == "Baton") then
+            require(ReplicatedStorage.Game.Item[a.__ClassName]).SwingSwoosh(a)
+        end
+    until configs.combat.batonsword.spamswoosh == false
+end)
+client.spamBatonSwordLunge = (function()
+    repeat task.wait()
+        local a = client.itemsys.GetLocalEquipped()
+        if a and (a.__ClassName == "Sword" or a.__ClassName == "Baton") then
+            require(ReplicatedStorage.Game.Item[a.__ClassName]).SwingLunge(a)
+        end
+    until configs.combat.batonsword.spamlunge == false
+end)
+
+client.notInWall = (function(i,v,wallCheck)
+    if wallCheck then
+        local ray = Ray.new(Workspace.CurrentCamera.CFrame.p, i - Workspace.CurrentCamera.CFrame.p)
+        local result = Workspace:FindPartOnRayWithIgnoreList(ray, v)
+        return result == nil
+    else
+        return true
+    end
+end)
+
+client.isEnemies = (function(a,b)
+    local a, b = tostring(a), tostring(b)
+    if a == "Criminal" and b == "Police" then
+        return true
+    elseif a == "Criminal" and b == "Prisoner" then
+        return false
+    elseif a == "Police" and b == "Criminal" then
+        return true
+    elseif a == "Police" and b == "Prisoner" then
+        return false
+    elseif a == "Prisoner" and b == "Police" then
+        return true
+    elseif a == "Prisoner" and b == "Criminal" then
+        return false
+    end
+end)
+client.getNearestToCursor = (function()
+    local Target = nil
+    local closestDist = configs.combat.silentaim.radius
+    local notInWall = client.notInWall
+    local isEnemies = client.isEnemies
+    for i,v in next, Players:GetPlayers() do
+        if isEnemies(LocalPlayer.Team, v.Team) and v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") and v.Character:FindFirstChild("Humanoid") and v.Character.Humanoid.Health ~= 0 then
+            local magnitude = (LocalPlayer.Character.HumanoidRootPart.Position - v.Character.HumanoidRootPart.Position).magnitude
+            if magnitude < 9e9 then
+                local Point, OnScreen = Workspace.CurrentCamera:WorldToViewportPoint(v.Character.HumanoidRootPart.Position)
+                if OnScreen and notInWall(v.Character.HumanoidRootPart.Position,{LocalPlayer.Character, v.Character}, configs.combat.silentaim.wallcheck) then
+                    local Distance =(Vector2.new(Point.X, Point.Y) - Vector2.new(LocalPlayer:GetMouse().X, LocalPlayer:GetMouse().Y)).magnitude
+                    if Distance < closestDist then
+                        closestDist = Distance
+                        Target = v
+                    end
+                end
+            end
+        end
+    end
+    return Target
+end)
+client.getPlayerVehicle = (function(plrname)
+    local uh = nil
+    for i,v in next, CollectionService:GetTagged("Vehicle") do
+        for i2,v2 in next, v:GetChildren() do
+            if v2.Name == "Seat" or v2.Name == "Passenger" then
+                local whateverSeatName = v2:FindFirstChild("PlayerName")
+                if whateverSeatName and whateverSeatName.Value == plrname then
+                    return uh
+                end
+            end
+        end
+    end
+    return uh
+end)
+
+client.getNearestVehicle = (function()
+    local char = LocalPlayer.Character
+    local target, distance = nil, 100
+    for i,v in next, CollectionService:GetTagged("Vehicle") do
+        if v:FindFirstChild("Seat") or v:FindFirstChild("Passenger") then
+            local targetDistance = (char:FindFirstChild("HumanoidRootPart").Position-v:GetModelCFrame().Position).magnitude
+            if targetDistance < distance then
+                distance = targetDistance
+                target = v
+            end
+        end
+    end
+    return target
+end)
+
+client.updateToOriginalChassisStats = (function()
+    local gvp = require(ReplicatedStorage.Vehicle.VehicleUtils).GetLocalVehiclePacket()
+    if gvp ~= nil and client.lastvehiclestats ~= nil and client.lastvehiclemodel ~= nil and gvp.Model == client.lastvehiclemodel then
+        local stats = client.lastvehiclestats
+        if configs.vehicle.engine == false and stats.GarageEngineSpeed then
+            gvp.GarageEngineSpeed = stats.GarageEngineSpeed
+        end
+        if configs.vehicle.suspension == false and stats.Height then
+            gvp.Height = stats.Height
+        end
+        if configs.vehicle.turn == false and stats.TurnSpeed then
+            gvp.TurnSpeed = stats.TurnSpeed
+        end
+    end
+end)
+
+client.hookNearestObj = (function()
+    if client.ropedata and client.ropedata.nearestObj and client.ropedata.obj then
+        local cframe = client.ropedata.nearestObj.PrimaryPart.CFrame:PointToObjectSpace(require(ReplicatedStorage:WaitForChild("Std"):WaitForChild("GeomUtils")).closestPointInPart(client.ropedata.nearestObj.PrimaryPart, client.ropedata.obj.Position))
+        client.ropedata.manifest.reqLinkRemote:FireServer(client.ropedata.nearestObj, cframe)
+    end
+end)
+
+client.onHitSurfaceHook = (function()
+    if configs.combat.increasetakedowndamage then
+        local a = client.itemsys.GetLocalEquipped()
+        if a and a.FakeName ~= "Sniper" then
+            a.FakeName = "Sniper"
+        end
+        if a and a.BulletEmitter then
+            setconstant(a.BulletEmitter.OnHitSurface._handlerListHead._fn, 75, "FakeName")
+        end
+    end
+end)
+
+-- New Walkspeed method
+RunService.RenderStepped:Connect(function()
+    pcall(function()
+        if configs.player.speedEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+            LocalPlayer.Character.Humanoid.WalkSpeed = configs.player.speedValue
+        end
+    end)
+end)
+
+-- Noclip Method
+RunService.Stepped:Connect(function()
+    pcall(function()
+        if configs.player.noclip and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+            LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.RunningNoPhysics)
+        end
+    end)
+end)
+
+task.spawn(function()
+    setupvalue(jbremote.FireServer, 1, function(key,...)
+        local args = {...}
+        if #args == 2 and debug.traceback():find("LocalScript:1343") then return end
+        return oldjbremote(key, ...)
+    end)
+
+    client.hittargetwithspeed = (function(...)
+        local args = {...}
+        if configs.combat.forcefieldnomiss then
+            args[3] = 0
+        end
+        return client.ori.hittargetwithspeed(unpack(args))
+    end)
+
+    old2 = hookfunction(client.bulletonlocalhitplayer, function(...)
+        local args = {...}
+        if configs.combat.alwaysheadshot then
+            args[15].isHeadshot = true
+            args[15].isWallbang = false
+        end
+        return old2(unpack(args))
+    end)
+
+    client.itemgun.Shoot = (function(self,a)
+        if configs.combat.silentaim.enabled then
+            local character = client.getNearestToCursor() and client.getNearestToCursor().Character
+            local hrp = character and character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                self.TipDirection = (hrp.Position - self.Tip.Position).Unit
+            end
+        end
+        client.ori.shoot(self, a)
+    end)
+
+    client.plasmagun.ShootOther = (function(self,a)
+        if configs.combat.silentaim.enabled and configs.combat.silentaim.includeplasma then
+            local character = client.getNearestToCursor() and client.getNearestToCursor().Character
+            local hrp = character and character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                self.TipDirection = (hrp.Position - self.Tip.Position).Unit
+            end
+        end
+        client.ori.plasmashootother(self,a)
+    end)
+
+    client.tase.Tase = (function(self,...)
+        if configs.combat.tasermodz then
+            self._lastDraw = 0
+        end
+        return client.ori.tase(self,...)
+    end)
+
+    client.raycast.RayIgnoreNonCollideWithIgnoreList = (function(...)
+        if debug.traceback():find("Taser") and configs.combat.silentaim.enabled and configs.combat.silentaim.includetaser then
+            local character = client.getNearestToCursor() and client.getNearestToCursor().Character
+            local hrp = character and character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                return hrp, hrp.Position, hrp.CFrame.LookVector, ...
+            end
+        end
+        return client.ori.rayignore(...)
+    end)
+
+    client.raycast.RayIgnoreNonCollide = (function(...)
+        local args = {...}
+        if configs.vehicle.driveonwater and debug.traceback():find("AlexChassis") then
+            args[6] = true
+        end
+        return client.ori.rayignorenon(unpack(args))
+    end)
+
+    client.gamepasssystem.doesPlayerOwnCached = (function(...)
+        return client.ori.doesplayerowncached(...)
+    end)
+
+    client.gunutil.getEquipTime = (function(...)
+        return configs.combat.noequipt and 0 or client.ori.getequiptime(...)
+    end)
+
+    client.circleac.Update = (function(...)
+        local mymom = ...
+        pcall(function()
+            client.ori.update(mymom)
+            if configs.player.nocircwait then
+                client.circleac.Spec.PressedAt = 0.01
+            end
+        end)
+    end)
+
+    client.paraglide.IsFlying = (function(...)
+        return configs.visuals.nosky and debug.traceback():find("Falling") and true or client.ori.isflying(...)
+    end)
+
+    client.vehiclelinkbinder._constructor._updateSeeking = (function(ropedata)
+        client.ropedata = ropedata
+        return client.ori.updateseeking(ropedata)
+    end)
+
+    LocalPlayer:GetMouse().Move:Connect(function()
+        local Mouse = UserInputService:GetMouseLocation()
+        Circle.Position = Vector2.new(Mouse.X, Mouse.Y)
+    end)
+    LocalPlayer.CharacterAdded:Connect(function(char)
+        task.wait(1)
+        local hrp = char:WaitForChild("HumanoidRootPart")
+        if hrp then
+            if configs.player.nofall then
+                hrp:AddTag("NoFallDamage")
+            end
+            if configs.player.norag then
+                hrp:AddTag("NoRagdoll")
+            end
+        end
+    end)
+    UserInputService.JumpRequest:Connect(function()
+        if configs.player.infjump and LocalPlayer.Character then
+            LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+        end
+    end)
+    LocalPlayer.PlayerGui.ChildAdded:Connect(function(mama)
+        if mama.Name == "LoadingBarGui" then
+            if client.ropedata and client.ropedata.nearestObj then
+                if configs.vehicle.instanttow and client.ropedata.obj.Name == "MetalHook" then
+                    client.hookNearestObj()
+                elseif configs.vehicle.helipick and client.ropedata.obj.Name == "RopePull" then
+                    client.hookNearestObj()
+                end
+            end
+        end
+    end)
+    Lighting.ChildAdded:connect(function(mama)
+        if configs.visuals.snipernoblur and mama.Name == "Blur" then
+            mama:GetPropertyChangedSignal("Size"):connect(function()
+                mama.Enabled = false
+            end)
+        end
+    end)
+    client.onvehicleentered:Connect(function(arg1)
+        client.vehicleEntered = true
+        if arg1.Model ~= client.lastvehiclemodel and arg1.Type == "Chassis" then
+            client.lastvehiclemodel = arg1.Model
+            client.lastvehiclestats.GarageEngineSpeed = arg1.GarageEngineSpeed
+            client.lastvehiclestats.TurnSpeed = arg1.TurnSpeed
+            client.lastvehiclestats.Height = arg1.Height
+        end
+        if configs.vehicle.ftog then
+            client.launchVehicleFlight()
+        end
+        if arg1.Type == "Heli" then
+            arg1.FallOutOfSkyDuration = configs.vehicle.helibreak and 0 or 10
+            arg1.DisableDuration = configs.vehicle.helibreak and 0 or 10
+        elseif arg1.Type == "Chassis" then
+            arg1.TirePopDuration = configs.vehicle.nopop and 0 or 7.5
+            arg1.DisableDuration = configs.vehicle.nopop and 0 or 7.5
+            arg1.TirePopProportion = configs.vehicle.nopop and 0 or 0.5
+        end
+    end)
+    client.onvehicleexited:Connect(function()
+        client.vehicleEntered = false
+    end)
+    client.onlocalitemequipped:Connect(function(equippeddata)
+        local getdata = client.getOldWeaponData
+        local a = client.itemsys.GetLocalEquipped()
+        if not a then return end
+        
+        task.spawn(function()
+            client.onHitSurfaceHook()
+        end)
+        if getdata(a.__ClassName, "EquipTime") ~= nil then
+            a.Config.EquipTime = configs.combat.noequipt and 0 or getdata(a.__ClassName, "EquipTime")
+        end
+        if getdata(a.__ClassName, "FireAuto") ~= nil then
+            a.Config.FireAuto = configs.combat.alwaysauto and true or getdata(a.__ClassName, "FireAuto")
+        end
+        if getdata(a.__ClassName, "BulletSpread") ~= nil then
+            a.Config.BulletSpread = configs.combat.nospread and 0 or getdata(a.__ClassName, "BulletSpread")
+        end
+        if getdata(a.__ClassName, "CamShakeMagnitude") ~= nil then
+            a.Config.CamShakeMagnitude = configs.combat.norecoil and 0 or getdata(a.__ClassName, "CamShakeMagnitude")
+        end
+        if a.__ClassName == "Taser" and getdata(a.__ClassName, "ReloadTimeHit") ~= nil and getdata(a.__ClassName, "ReloadTime") ~= nil then
+            a.Config.ReloadTimeHit = configs.combat.tasermodz and 0 or getdata(a.__ClassName, "ReloadTimeHit")
+            a.Config.ReloadTime = configs.combat.tasermodz and 0 or getdata(a.__ClassName, "ReloadTime")
+        end
+        if a and a.BulletEmitter and a.BulletEmitter.GravityVector then
+            a.BulletEmitter.GravityVector = configs.combat.nobulletg and Vector3.new(0,0,0) or Vector3.new(0, -Workspace.Gravity / 10, 0)
+        end
+    end)
+
+    task.spawn(function()
+        while task.wait() do
+            pcall(function()
+                local gvp = require(ReplicatedStorage.Vehicle.VehicleUtils).GetLocalVehiclePacket() or nil
+                if gvp ~= nil and client.vehicleEntered then
+                    if gvp.Type == "Chassis" then
+                        if configs.vehicle.engine then
+                            gvp.GarageEngineSpeed = configs.vehicle.enginesp
+                        end
+                        if configs.vehicle.suspension then
+                            gvp.Height = configs.vehicle.suspensionhe
+                        end
+                        if configs.vehicle.turn then
+                            gvp.TurnSpeed = configs.vehicle.turnsp
+                        end
+                    end
+                end
+            end)
+        end
+    end)
+end)
+
+--================================================================
+--==                ESP Logic (with Chams)                      ==
+--================================================================
+local ESP = { Players = {} }
+
+function ESP:RemoveAll()
+    for player, objects in pairs(self.Players) do
+        self:RemoveForPlayer(player)
+    end
+    self.Players = {}
+end
+
+function ESP:CreateForPlayer(player)
+    if self.Players[player] or not player.Character then return end
+    
+    local highlight = Instance.new("Highlight")
+    highlight.Parent = player.Character
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.Enabled = false
+
+    local objects = {
+        Box = Drawing.new("Square"), 
+        Name = Drawing.new("Text"), 
+        Distance = Drawing.new("Text"), 
+        Line = Drawing.new("Line"),
+        Highlight = highlight
+    }
+
+    for id, obj in pairs(objects) do
+        if id ~= "Highlight" then
+             obj.Visible = false
+             obj.ZIndex = 999
+        end
+    end
+    
+    objects.Box.Thickness = 1
+    objects.Box.Filled = false
+    objects.Name.Font = Drawing.Fonts.UI
+    objects.Name.Center = true
+    objects.Distance.Font = Drawing.Fonts.UI
+    objects.Distance.Center = true
+    objects.Line.Thickness = 1
+    self.Players[player] = objects
+end
+
+function ESP:RemoveForPlayer(player)
+    if not self.Players[player] then return end
+    for _, obj in pairs(self.Players[player]) do 
+        obj:Destroy() 
+    end
+    self.Players[player] = nil
+end
+
+function ESP:Update()
+    if not configs.visuals.esp_enabled then
+        if next(self.Players) then self:RemoveAll() end
+        return
+    end
+
+    -- ESP Garbage Collection: Remove players who are no longer valid
+    local validPlayers = {}
+    for _, player in ipairs(Players:GetPlayers()) do
+        validPlayers[player] = true
+    end
+    for player, _ in pairs(self.Players) do
+        if not validPlayers[player] then
+            self:RemoveForPlayer(player)
+        end
+    end
+    
+    local localCharacter = LocalPlayer.Character
+    if not localCharacter or not localCharacter:FindFirstChild("HumanoidRootPart") then return end
+    local localHRP = localCharacter.HumanoidRootPart
+    local camera = Workspace.CurrentCamera
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        local isVisible = false
+        if player ~= LocalPlayer then
+            local character = player.Character
+            local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+            
+            if character and humanoid and humanoid.Health > 0 and character:FindFirstChild("HumanoidRootPart") then
+                local teamName = tostring(player.Team)
+                local isTeamEnabled = (teamName == "Police" and configs.visuals.esp_police) or
+                                      (teamName == "Criminal" and configs.visuals.esp_criminal) or
+                                      (teamName == "Prisoner" and configs.visuals.esp_prisoner)
+                
+                if not configs.visuals.esp_police and not configs.visuals.esp_criminal and not configs.visuals.esp_prisoner then
+                    isTeamEnabled = true
+                end
+                
+                if isTeamEnabled then
+                    isVisible = true
+                    local hrp = character.HumanoidRootPart
+                    local head = character:FindFirstChild("Head")
+                    
+                    if hrp and head then
+                        local headPos = camera:WorldToViewportPoint(head.Position)
+                        
+                        if not self.Players[player] then self:CreateForPlayer(player) end
+                        local espObjects = self.Players[player]
+                        
+                        if not espObjects then continue end
+                        
+                        local legPos = camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0))
+                        
+                        local height = math.abs(headPos.Y - legPos.Y) * (configs.visuals.esp_box_size / 20)
+                        local width = height / 2
+                        local boxPos = Vector2.new(headPos.X - width / 2, headPos.Y)
+                        local boxSize = Vector2.new(width, height)
+                        
+                        local espColor
+                        if teamName == "Police" then espColor = configs.visuals.esp_police_color
+                        elseif teamName == "Criminal" then espColor = configs.visuals.esp_criminal_color
+                        elseif teamName == "Prisoner" then espColor = configs.visuals.esp_prisoner_color
+                        else espColor = Color3.new(1,1,1) end
+
+                        if espObjects.Highlight and espObjects.Highlight.Parent then
+                            espObjects.Highlight.Enabled = configs.visuals.esp_chams
+                            if configs.visuals.esp_chams then
+                                espObjects.Highlight.FillColor = espColor
+                                espObjects.Highlight.OutlineColor = espColor
+                                espObjects.Highlight.FillTransparency = configs.visuals.esp_chams_transparency
+                                espObjects.Highlight.OutlineTransparency = math.max(0, configs.visuals.esp_chams_transparency - 0.2)
+                            end
+                        end
+                        
+                        espObjects.Box.Visible = configs.visuals.esp_box
+                        espObjects.Box.Position = boxPos
+                        espObjects.Box.Size = boxSize
+                        espObjects.Box.Color = espColor
+                        
+                        espObjects.Name.Visible = configs.visuals.esp_name
+                        espObjects.Name.Text = player.Name
+                        espObjects.Name.Color = espColor
+                        espObjects.Name.Size = configs.visuals.esp_name_size
+                        espObjects.Name.Position = Vector2.new(headPos.X, headPos.Y - (configs.visuals.esp_name_size / 2) - 4)
+                        
+                        local distance = math.floor((localHRP.Position - hrp.Position).Magnitude)
+                        espObjects.Distance.Visible = configs.visuals.esp_distance
+                        espObjects.Distance.Text = `[{distance}m]`
+                        espObjects.Distance.Color = espColor
+                        espObjects.Distance.Size = configs.visuals.esp_distance_size
+                        espObjects.Distance.Position = Vector2.new(headPos.X, legPos.Y + (configs.visuals.esp_distance_size / 2) + 2)
+                        
+                        espObjects.Line.Visible = configs.visuals.esp_lines
+                        espObjects.Line.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
+                        espObjects.Line.To = Vector2.new(headPos.X, headPos.Y)
+                        espObjects.Line.Color = espColor
+                    end
+                end
+            end
+        end
+        if not isVisible and self.Players[player] then 
+            self:RemoveForPlayer(player) 
+        end
+    end
+end
+
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function()
+        if ESP.Players[player] then
+            ESP:RemoveForPlayer(player)
+        end
+    end)
+end)
+
+Players.PlayerRemoving:Connect(function(player) 
+    ESP:RemoveForPlayer(player) 
+end)
+
+RunService.RenderStepped:Connect(function() 
+    pcall(ESP.Update, ESP) 
+end)
+
+
+--================================================================
+--==                    Fluent UI Construction                    ==
+--================================================================
+local Window = Fluent:CreateWindow({
+    Title = "8Bit Jailbreak",
+    SubTitle = "by New_Jmaster",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(580, 500),
+    Acrylic = true,
+    Theme = "Aqua",
+    MinimizeKey = Enum.KeyCode.RightControl
+})
+
+local Tabs = {
+    Player = Window:AddTab({ Title = "Player", Icon = "user" }),
+    Vehicle = Window:AddTab({ Title = "Vehicle", Icon = "car" }),
+    Combat = Window:AddTab({ Title = "Combat", Icon = "swords" }),
+    Visuals = Window:AddTab({ Title = "Visuals", Icon = "eye" }),
+    Misc = Window:AddTab({ Title = "Misc", Icon = "component" }),
+    Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
+}
+
+-- Wrapping UI creation in pcalls to prevent one error from breaking the whole UI
+local function safeCreate(tabName, createFunction)
+    local success, err = pcall(createFunction)
+    if not success then
+        warn("Fluent UI Error [" .. tabName .. "]: " .. tostring(err))
+        Fluent:Notify({ Title = "UI Error", Content = "The '" .. tabName .. "' tab failed to load. Check F9 console for details.", Duration = 10})
+    end
+end
+
+safeCreate("Player", function()
+    Tabs.Player:AddParagraph({Title = "Character", Content = "Modify local player character properties."})
+    local infJumpToggle = Tabs.Player:AddToggle("PlayerInfJump", {Title = "Infinite Jump", Default = configs.player.infjump})
+    infJumpToggle:OnChanged(function(value) configs.player.infjump = value end)
+    
+    local speedSlider = Tabs.Player:AddSlider("PlayerSpeed", {Title = "WalkSpeed", Default = configs.player.speedValue, Min = 1, Max = 200, Rounding = 0})
+    speedSlider:OnChanged(function(value) configs.player.speedValue = value end)
+    
+    local speedToggle = Tabs.Player:AddToggle("PlayerSpeedEnabled", {Title = "Enable WalkSpeed", Default = configs.player.speedEnabled})
+    speedToggle:OnChanged(function(value) 
+        configs.player.speedEnabled = value
+        if not value and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+            LocalPlayer.Character.Humanoid.WalkSpeed = 16 -- Revert to default
+        end
+    end)
+    
+    Tabs.Player:AddParagraph({Title = "Movement Utilities", Content = "Bypass various movement restrictions."})
+    local noRagdoll = Tabs.Player:AddToggle("PlayerNoRag", {Title = "No Ragdoll", Default = configs.player.norag})
+    noRagdoll:OnChanged(function(value) 
+        configs.player.norag = value 
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then if value then hrp:AddTag("NoRagdoll") else hrp:RemoveTag("NoRagdoll") end end
+    end)
+    local noFall = Tabs.Player:AddToggle("PlayerNoFall", {Title = "No Fall Damage", Default = configs.player.nofall})
+    noFall:OnChanged(function(value) 
+        configs.player.nofall = value
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then if value then hrp:AddTag("NoFallDamage") else hrp:RemoveTag("NoFallDamage") end end
+    end)
+    
+    local noClip = Tabs.Player:AddToggle("PlayerNoClip", {Title = "No Clip", Default = configs.player.noclip})
+    noClip:OnChanged(function(value) configs.player.noclip = value end)
+    
+    local noStun = Tabs.Player:AddToggle("PlayerNoStun", {Title = "No Ragdoll Stun", Default = configs.player.nostun})
+    noStun:OnChanged(function(value) 
+        configs.player.nostun = value
+        client.settingss.Time.Stunned = value and 0 or 5
+        if client.stunnedragdoll then setupvalue(client.stunnedragdoll, 1, value and nil) end
+    end)
+    local noRollWait = Tabs.Player:AddToggle("PlayerNoRollWait", {Title = "No Roll Wait", Default = configs.player.norwait})
+    noRollWait:OnChanged(function(value) 
+        configs.player.norwait = value
+        if client.activeaction.roll then client.activeaction.roll.useEvery = value and 0 or 5 end
+    end)
+    local noCrawlSlow = Tabs.Player:AddToggle("PlayerNoCrawlSlow", {Title = "No Crawling Slow", Default = configs.player.nocslow})
+    noCrawlSlow:OnChanged(function(value)
+        configs.player.nocslow = value
+        if client.walkspeedfun then setconstant(client.walkspeedfun, 16, value and 1 or 0.4) end
+    end)
+    local noCircleWait = Tabs.Player:AddToggle("PlayerNoCircleWait", {Title = "No Circle Hold", Default = configs.player.nocircwait})
+    noCircleWait:OnChanged(function(value) configs.player.nocircwait = value end)
+    local noInjurySlow = Tabs.Player:AddToggle("PlayerNoInjurySlow", {Title = "No Injury Slow", Default = configs.player.noislow})
+    noInjurySlow:OnChanged(function(value)
+        configs.player.noislow = value
+        if client.walkspeedfun then setconstant(client.walkspeedfun, 8, value and 1 or 0.5) end
+    end)
+    local noSpotlightSlow = Tabs.Player:AddToggle("PlayerNoSpotlightSlow", {Title = "No Spotlight Slow", Default = configs.player.nospslow})
+    noSpotlightSlow:OnChanged(function(value)
+        configs.player.nospslow = value
+        if client.walkspeedfun then setconstant(client.walkspeedfun, 35, value and 1 or 0.8) end
+    end)
+
+    local noSkyDive = Tabs.Player:AddToggle("PlayerNoSky", {Title = "No Skydive", Default = configs.visuals.nosky})
+    noSkyDive:OnChanged(function(value) configs.visuals.nosky = value end)
+end)
+
+safeCreate("Vehicle", function()
+    Tabs.Vehicle:AddParagraph({Title = "Vehicle Flight", Content = "Take to the skies in any land vehicle."})
+    local flightSpeed = Tabs.Vehicle:AddSlider("VehicleFlightSpeed", {Title = "Flight Speed", Default = configs.vehicle.fspeed, Min = 10, Max = 1000, Rounding = 0})
+    flightSpeed:OnChanged(function(value) configs.vehicle.fspeed = value end)
+    local flightX = Tabs.Vehicle:AddSlider("VehicleFlightX", {Title = "Flight Rotation X", Default = configs.vehicle.fx, Min = 0, Max = 360, Rounding = 0})
+    flightX:OnChanged(function(value) configs.vehicle.fx = value end)
+    local flightY = Tabs.Vehicle:AddSlider("VehicleFlightY", {Title = "Flight Rotation Y", Default = configs.vehicle.fy, Min = 0, Max = 360, Rounding = 0})
+    flightY:OnChanged(function(value) configs.vehicle.fy = value end)
+    local flightZ = Tabs.Vehicle:AddSlider("VehicleFlightZ", {Title = "Flight Rotation Z", Default = configs.vehicle.fz, Min = 0, Max = 360, Rounding = 0})
+    flightZ:OnChanged(function(value) configs.vehicle.fz = value end)
+    local flightTog = Tabs.Vehicle:AddToggle("VehicleFlightTog", {Title = "Enable Vehicle Flight", Default = configs.vehicle.ftog})
+    flightTog:OnChanged(function(value)
+        configs.vehicle.ftog = value
+        if value and client.vehicleEntered then task.spawn(client.launchVehicleFlight) end
+    end)
+    Tabs.Vehicle:AddParagraph({Title = "General Mods", Content = ""})
+    local infNitro = Tabs.Vehicle:AddToggle("VehicleInfNitro", {Title = "Infinite Nitro", Default = configs.vehicle.infnitro})
+    infNitro:OnChanged(function(value)
+        configs.vehicle.infnitro = value
+        if value then task.spawn(client.nitroCorrection) end
+    end)
+    local rInfNitro = Tabs.Vehicle:AddToggle("VehicleRandomInfNitro", {Title = "Random Infinite Nitro", Default = configs.vehicle.rinfnitro})
+    rInfNitro:OnChanged(function(value) configs.vehicle.rinfnitro = value end)
+    local autoFlip = Tabs.Vehicle:AddToggle("VehicleAutoFlip", {Title = "Automatic Flip", Default = configs.vehicle.autoflip})
+    autoFlip:OnChanged(function(value)
+        configs.vehicle.autoflip = value
+        if value then task.spawn(client.flipCorrection) end
+    end)
+    local driveOnWater = Tabs.Vehicle:AddToggle("VehicleDriveOnWater", {Title = "Drive On Water", Default = configs.vehicle.driveonwater})
+    driveOnWater:OnChanged(function(value)
+        configs.vehicle.driveonwater = value
+        if client.alexchassis then setconstant(client.alexchassis.UpdateEngine, 280, value and 1 or 0.625) end
+    end)
+    Tabs.Vehicle:AddParagraph({Title = "Car Mods", Content = ""})
+    local engineSpeed = Tabs.Vehicle:AddSlider("VehicleEngineSpeed", {Title = "Engine Speed", Default = configs.vehicle.enginesp, Min = 1, Max = 300, Rounding = 0})
+    engineSpeed:OnChanged(function(value) configs.vehicle.enginesp = value end)
+    local engineTog = Tabs.Vehicle:AddToggle("VehicleEngineTog", {Title = "Apply Engine Speed", Default = configs.vehicle.engine})
+    engineTog:OnChanged(function(value)
+        configs.vehicle.engine = value
+        if not value then client.updateToOriginalChassisStats() end
+    end)
+    local suspensionHeight = Tabs.Vehicle:AddSlider("VehicleSuspensionHeight", {Title = "Suspension Height", Default = configs.vehicle.suspensionhe, Min = 0, Max = 150, Rounding = 0})
+    suspensionHeight:OnChanged(function(value) configs.vehicle.suspensionhe = value end)
+    local suspensionTog = Tabs.Vehicle:AddToggle("VehicleSuspensionTog", {Title = "Apply Suspension Height", Default = configs.vehicle.suspension})
+    suspensionTog:OnChanged(function(value)
+        configs.vehicle.suspension = value
+        if not value then client.updateToOriginalChassisStats() end
+    end)
+    local turnSpeed = Tabs.Vehicle:AddSlider("VehicleTurnSpeed", {Title = "Turn Speed", Default = configs.vehicle.turnsp, Min = 1, Max = 10, Rounding = 1})
+    turnSpeed:OnChanged(function(value) configs.vehicle.turnsp = value end)
+    local turnTog = Tabs.Vehicle:AddToggle("VehicleTurnTog", {Title = "Apply Turn Speed", Default = configs.vehicle.turn})
+    turnTog:OnChanged(function(value)
+        configs.vehicle.turn = value
+        if not value then client.updateToOriginalChassisStats() end
+    end)
+    local noPop = Tabs.Vehicle:AddToggle("VehicleNoPop", {Title = "Anti Tire Pop", Default = configs.vehicle.nopop})
+    noPop:OnChanged(function(value) configs.vehicle.nopop = value end)
+    local instantTow = Tabs.Vehicle:AddToggle("VehicleInstantTow", {Title = "Instant Tow", Default = configs.vehicle.instanttow})
+    instantTow:OnChanged(function(value) configs.vehicle.instanttow = value end)
+    Tabs.Vehicle:AddParagraph({Title = "Helicopter Mods", Content = ""})
+    local heliBreak = Tabs.Vehicle:AddToggle("VehicleHeliBreak", {Title = "Anti Heli Break", Default = configs.vehicle.helibreak})
+    heliBreak:OnChanged(function(value) configs.vehicle.helibreak = value end)
+    local heliPick = Tabs.Vehicle:AddToggle("VehicleHeliPick", {Title = "Instant Pickup", Default = configs.vehicle.helipick})
+    heliPick:OnChanged(function(value) configs.vehicle.helipick = value end)
+end)
+
+safeCreate("Combat", function()
+    Tabs.Combat:AddParagraph({Title = "Weapon Mods", Content = ""})
+    local alwaysAuto = Tabs.Combat:AddToggle("CombatAlwaysAuto", {Title = "Always Auto", Default = configs.combat.alwaysauto})
+    alwaysAuto:OnChanged(function(value) configs.combat.alwaysauto = value end)
+    local noRecoil = Tabs.Combat:AddToggle("CombatNoRecoil", {Title = "No Recoil", Default = configs.combat.norecoil})
+    noRecoil:OnChanged(function(value) configs.combat.norecoil = value end)
+    local noSpread = Tabs.Combat:AddToggle("CombatNoSpread", {Title = "No Spread", Default = configs.combat.nospread})
+    noSpread:OnChanged(function(value) configs.combat.nospread = value end)
+    local noBulletG = Tabs.Combat:AddToggle("CombatNoBulletGravity", {Title = "No Bullet Gravity", Default = configs.combat.nobulletg})
+    noBulletG:OnChanged(function(value) configs.combat.nobulletg = value end)
+    local noEquipTime = Tabs.Combat:AddToggle("CombatNoEquipTime", {Title = "No Equip Time", Default = configs.combat.noequipt})
+    noEquipTime:OnChanged(function(value) configs.combat.noequipt = value end)
+    local headshotOnly = Tabs.Combat:AddToggle("CombatAlwaysHeadshot", {Title = "Headshot Only", Default = configs.combat.alwaysheadshot})
+    headshotOnly:OnChanged(function(value) configs.combat.alwaysheadshot = value end)
+    local incTakedownDmg = Tabs.Combat:AddToggle("CombatIncreaseTakedownDmg", {Title = "Increase Takedown Damage", Default = configs.combat.increasetakedowndamage})
+    incTakedownDmg:OnChanged(function(value) configs.combat.increasetakedowndamage = value end)
+    local fastTaser = Tabs.Combat:AddToggle("CombatTaserModz", {Title = "Fast Taser", Default = configs.combat.tasermodz})
+    fastTaser:OnChanged(function(value) configs.combat.tasermodz = value end)
+    local ffNoMiss = Tabs.Combat:AddToggle("CombatForcefieldNoMiss", {Title = "Forcefield Anti Miss", Default = configs.combat.forcefieldnomiss})
+    ffNoMiss:OnChanged(function(value) configs.combat.forcefieldnomiss = value end)
+    
+    Tabs.Combat:AddParagraph({Title = "Melee Mods", Content = ""})
+    local meleeSpamSwoosh = Tabs.Combat:AddToggle("CombatMeleeSpamSwoosh", {Title = "Always Swoosh", Default = configs.combat.batonsword.spamswoosh})
+    meleeSpamSwoosh:OnChanged(function(value) 
+        configs.combat.batonsword.spamswoosh = value
+        if value then task.spawn(client.spamBatonSwordSwoosh) end
+    end)
+    local meleeSpamLunge = Tabs.Combat:AddToggle("CombatMeleeSpamLunge", {Title = "Always Lunge", Default = configs.combat.batonsword.spamlunge})
+    meleeSpamLunge:OnChanged(function(value) 
+        configs.combat.batonsword.spamlunge = value
+        if value then task.spawn(client.spamBatonSwordLunge) end
+    end)
+
+    Tabs.Combat:AddParagraph({Title = "Silent Aim", Content = "Unoptimized, may not work as expected."})
+    local saEnabled = Tabs.Combat:AddToggle("CombatSA_Enabled", {Title = "Enabled", Default = configs.combat.silentaim.enabled})
+    saEnabled:OnChanged(function(value) configs.combat.silentaim.enabled = value end)
+    local saIncTaser = Tabs.Combat:AddToggle("CombatSA_IncludeTaser", {Title = "Include Taser", Default = configs.combat.silentaim.includetaser})
+    saIncTaser:OnChanged(function(value) configs.combat.silentaim.includetaser = value end)
+    local saIncPlasma = Tabs.Combat:AddToggle("CombatSA_IncludePlasma", {Title = "Include Plasma Gun", Default = configs.combat.silentaim.includeplasma})
+    saIncPlasma:OnChanged(function(value) configs.combat.silentaim.includeplasma = value end)
+    local saRadius = Tabs.Combat:AddSlider("CombatSA_Radius", {Title = "Radius", Default = configs.combat.silentaim.radius, Min = 10, Max = 1000, Rounding = 0})
+    saRadius:OnChanged(function(value) configs.combat.silentaim.radius = value; Circle.Radius = value end)
+    local saWallcheck = Tabs.Combat:AddToggle("CombatSA_Wallcheck", {Title = "Wallcheck", Default = configs.combat.silentaim.wallcheck})
+    saWallcheck:OnChanged(function(value) configs.combat.silentaim.wallcheck = value end)
+    
+    Tabs.Combat:AddParagraph({Title = "Other", Content = ""})
+    local noSniperBlur = Tabs.Combat:AddToggle("CombatSniperNoBlur", {Title = "No Sniper Scope Blur", Default = configs.visuals.snipernoblur})
+    noSniperBlur:OnChanged(function(value) configs.visuals.snipernoblur = value end)
+    local noGrenadeSmoke = Tabs.Combat:AddToggle("CombatNoGrenadeSmoke", {Title = "No Grenade Smoke", Default = configs.visuals.nogrenadesmoke})
+    noGrenadeSmoke:OnChanged(function(value)
+        configs.visuals.nogrenadesmoke = value
+        client.smokeGrenadeHook(value)
+    end)
+    
+    Tabs.Combat:AddParagraph({Title = "Utilities", Content = ""})
+    Tabs.Combat:AddButton({Title = "Open Gunstore UI", Callback = function()
+        set_thread_identity(2)
+        require(ReplicatedStorage.Game.GunShop.GunShopUI).open()
+        set_thread_identity(7)
+    end})
+end)
+
+safeCreate("Visuals", function()
+    Tabs.Visuals:AddParagraph({Title = "Player ESP", Content = "See players through walls."})
+    local espEnabled = Tabs.Visuals:AddToggle("EspEnabled", {Title = "Enable ESP", Default = configs.visuals.esp_enabled})
+    espEnabled:OnChanged(function(value) configs.visuals.esp_enabled = value end)
+
+    Tabs.Visuals:AddParagraph({Title = "ESP Elements", Content = ""})
+    local espBox = Tabs.Visuals:AddToggle("EspBox", {Title = "Box", Default = configs.visuals.esp_box})
+    espBox:OnChanged(function(value) configs.visuals.esp_box = value end)
+    local espName = Tabs.Visuals:AddToggle("EspName", {Title = "Name", Default = configs.visuals.esp_name})
+    espName:OnChanged(function(value) configs.visuals.esp_name = value end)
+    local espDist = Tabs.Visuals:AddToggle("EspDist", {Title = "Distance", Default = configs.visuals.esp_distance})
+    espDist:OnChanged(function(value) configs.visuals.esp_distance = value end)
+    local espLines = Tabs.Visuals:AddToggle("EspLines", {Title = "Tracer Lines", Default = configs.visuals.esp_lines})
+    espLines:OnChanged(function(value) configs.visuals.esp_lines = value end)
+    local espChams = Tabs.Visuals:AddToggle("EspChams", {Title = "Chams (Highlight)", Default = configs.visuals.esp_chams})
+    espChams:OnChanged(function(value) configs.visuals.esp_chams = value end)
+
+    Tabs.Visuals:AddParagraph({Title = "ESP Customization", Content = ""})
+    local espBoxSize = Tabs.Visuals:AddSlider("EspBoxSize", {Title = "Box Size", Default = configs.visuals.esp_box_size, Min = 1, Max = 300, Rounding = 0})
+    espBoxSize:OnChanged(function(value) configs.visuals.esp_box_size = value end)
+    local espNameSize = Tabs.Visuals:AddSlider("EspNameSize", {Title = "Name Size", Default = configs.visuals.esp_name_size, Min = 1, Max = 300, Rounding = 0})
+    espNameSize:OnChanged(function(value) configs.visuals.esp_name_size = value end)
+    local espDistSize = Tabs.Visuals:AddSlider("EspDistSize", {Title = "Distance Size", Default = configs.visuals.esp_distance_size, Min = 1, Max = 300, Rounding = 0})
+    espDistSize:OnChanged(function(value) configs.visuals.esp_distance_size = value end)
+    local chamsTrans = Tabs.Visuals:AddSlider("EspChamsTrans", {Title = "Chams Transparency", Default = configs.visuals.esp_chams_transparency, Min = 0, Max = 1, Rounding = 2})
+    chamsTrans:OnChanged(function(value) configs.visuals.esp_chams_transparency = value end)
+
+    Tabs.Visuals:AddParagraph({Title = "ESP Teams Filter & Colors", Content = ""})
+    local espPolice = Tabs.Visuals:AddToggle("EspPolice", {Title = "Show Police", Default = configs.visuals.esp_police})
+    espPolice:OnChanged(function(value) configs.visuals.esp_police = value end)
+    local espPoliceColor = Tabs.Visuals:AddColorpicker("EspPoliceColor", {Title = "Police Color", Default = configs.visuals.esp_police_color})
+    espPoliceColor:OnChanged(function(value) configs.visuals.esp_police_color = value end)
+    
+    local espCriminal = Tabs.Visuals:AddToggle("EspCriminal", {Title = "Show Criminal", Default = configs.visuals.esp_criminal})
+    espCriminal:OnChanged(function(value) configs.visuals.esp_criminal = value end)
+    local espCriminalColor = Tabs.Visuals:AddColorpicker("EspCriminalColor", {Title = "Criminal Color", Default = configs.visuals.esp_criminal_color})
+    espCriminalColor:OnChanged(function(value) configs.visuals.esp_criminal_color = value end)
+
+    local espPrisoner = Tabs.Visuals:AddToggle("EspPrisoner", {Title = "Show Prisoner", Default = configs.visuals.esp_prisoner})
+    espPrisoner:OnChanged(function(value) configs.visuals.esp_prisoner = value end)
+    local espPrisonerColor = Tabs.Visuals:AddColorpicker("EspPrisonerColor", {Title = "Prisoner Color", Default = configs.visuals.esp_prisoner_color})
+    espPrisonerColor:OnChanged(function(value) configs.visuals.esp_prisoner_color = value end)
+end)
+
+safeCreate("Misc", function()
+    Tabs.Misc:AddParagraph({Title = "Utilities", Content = "Various player-related utilities."})
+    local bypassKD = Tabs.Misc:AddToggle("PlayerBypassKD", {Title = "Always Has Keycard", Default = configs.player.bypasskd})
+    bypassKD:OnChanged(function(value)
+        configs.player.bypasskd = value
+        client.hasKeyCorrection(value)
+    end)
+    local crawlEquip = Tabs.Misc:AddToggle("PlayerCrawlEquip", {Title = "Allow Equip While Crawling", Default = configs.player.crawlequip})
+    crawlEquip:OnChanged(function(value)
+        configs.player.crawlequip = value
+        if value then task.spawn(client.isCrawlingCorrection) end
+    end)
+    local backbone = Tabs.Misc:AddToggle("PlayerBackbone", {Title = "Break Your Backbone", Default = configs.player.backbone})
+    backbone:OnChanged(function(value)
+        configs.player.backbone = value
+        if value then task.spawn(client.duckCorrection) end
+    end)
+end)
+
+
+--================================================================
+--==                Managers and Finalization                   ==
+--================================================================
+safeCreate("Settings", function()
+    SaveManager:SetLibrary(Fluent)
+    InterfaceManager:SetLibrary(Fluent)
+    InterfaceManager:SetFolder("FluentJailbreak")
+    SaveManager:SetFolder("FluentJailbreak/configs")
+    InterfaceManager:BuildInterfaceSection(Tabs.Settings)
+    SaveManager:BuildConfigSection(Tabs.Settings)
+end)
+
+-- Select the first tab to open
+Window:SelectTab(1)
+
+-- Load the auto-load config if it exists
+SaveManager:LoadAutoloadConfig()
+
+Fluent:Notify({
+    Title = "Script Loaded",
+    Content = "UI successfully initialized.",
+    Duration = 5
+})
+
+-- Initialize states that depend on configs
+client.hasKeyCorrection(configs.player.bypasskd)
+if configs.player.norag and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("HumanoidRootPart") then
+    LocalPlayer.Character.HumanoidRootPart:AddTag("NoRagdoll")
+end
+if configs.player.nofall and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("HumanoidRootPart") then
+    LocalPlayer.Character.HumanoidRootPart:AddTag("NoFallDamage")
+end
