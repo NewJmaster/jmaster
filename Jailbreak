@@ -1,8 +1,31 @@
+repeat task.wait(0.1) until game:IsLoaded()
+local timeout = 30
+local startTime = tick()
+repeat 
+    task.wait(0.1) 
+until (isfunctionhooked and hookfunction) or (tick() - startTime > timeout)
+
+if not isfunctionhooked or not hookfunction then
+    warn("Required functions not available after timeout")
+end
 
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
+local key, jbremote
+pcall(function()
+    local KeyFetcherString = game:HttpGet('https://raw.githubusercontent.com/Introvert1337/RobloxReleases/refs/heads/main/Scripts/Jailbreak/KeyFetcher.lua', true)
+    local KeyFetcherFunc = KeyFetcherString and loadstring(KeyFetcherString)
+    if KeyFetcherFunc then
+        key, jbremote = KeyFetcherFunc()
+    end
+end)
+
+if not key or not jbremote then
+    Fluent:Notify({Title = "Script Error", Content = "Failed to load critical assets. Please re-execute.", Duration = 10})
+    return
+end
 
 -- Service Variables
 local Players = game:GetService("Players")
@@ -15,86 +38,85 @@ local Workspace = game:GetService("Workspace")
 local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 
-getgenv().isfunctionhooked = isfunctionhooked or ishooked -- delta should be supported now
+getgenv().isfunctionhooked = isfunctionhooked or ishooked
 
-local key, jbremote = loadstring(game:HttpGet('https://raw.githubusercontent.com/Introvert1337/RobloxReleases/refs/heads/main/Scripts/Jailbreak/KeyFetcher.lua'))() -- credits to introvert1337
 local oldjbremote = getupvalue(network.FireServer, 1)
 
 -- Configuration table, holds the state of all features
 getgenv().configs = {
     player = {
-        noclip = false;
-        speedEnabled = false;
-        speedValue = 16;
-        infjump = false;
-        nofall = false;
-        norag = false;
-        noislow = false;
-        nostun = false;
-        norwait = false;
-        nocslow = false;
-        nocircwait = false;
-        nopwait = false;
-        bypasskd = false;
-        alwayssilentp = false;
-        alwaysp = false;
-        juiced = false;
-        crawlequip = false;
-        backbone = false;
-        getclothes = false;
-        nospslow = false;
-    };
+        noclip = false,
+        speedEnabled = false,
+        speedValue = 16,
+        infjump = false,
+        nofall = false,
+        norag = false,
+        noislow = false,
+        nostun = false,
+        norwait = false,
+        nocslow = false,
+        nocircwait = false,
+        nopwait = false,
+        bypasskd = false,
+        alwayssilentp = false,
+        alwaysp = false,
+        juiced = false,
+        crawlequip = false,
+        backbone = false,
+        getclothes = false,
+        nospslow = false,
+    },
     vehicle = {
-        fspeed = 10;
-        ftog = false;
-        fx = 0;
-        fy = 0;
-        fz = 0;
-        engine = false;
-        enginesp = 100;
-        brake = false;
-        brakesp = 0;
-        suspension = false;
-        suspensionhe = 10;
-        turnsp = 1;
-        turn = false;
-        nopop = false;
-        infnitro = false;
-        rinfnitro = false;
-        alwaysnit = false;
-        alwayshij = false;
-        autoflip = false;
-        helibreak = false;
-        helienginesp = 0;
-        heliengine = false;
-        instanttow = false;
-        helipick = false;
-        driveonwater = false;
-    };
+        fspeed = 10,
+        ftog = false,
+        fx = 0,
+        fy = 0,
+        fz = 0,
+        engine = false,
+        enginesp = 100,
+        brake = false,
+        brakesp = 0,
+        suspension = false,
+        suspensionhe = 10,
+        turnsp = 1,
+        turn = false,
+        nopop = false,
+        infnitro = false,
+        rinfnitro = false,
+        alwaysnit = false,
+        alwayshij = false,
+        autoflip = false,
+        helibreak = false,
+        helienginesp = 0,
+        heliengine = false,
+        instanttow = false,
+        helipick = false,
+        driveonwater = false,
+    },
     combat = {
-        noequipt = false;
-        nospread = false;
-        norecoil = false;
-        nobulletg = false;
-        alwaysauto = false;
-        alwaysheadshot = false;
-        tasermodz = false;
-        instantrocketseek = false;
-        forcefieldnomiss = false;
-        increasetakedowndamage = false;
-        increaseforcedamage = false;
+        noequipt = false,
+        nospread = false,
+        norecoil = false,
+        nobulletg = false,
+        alwaysauto = false,
+        alwaysheadshot = false,
+        tasermodz = false,
+        instantrocketseek = false,
+        forcefieldnomiss = false,
+        increasetakedowndamage = false,
+        increaseforcedamage = false,
         silentaim = {
-            enabled = false;
-            includetaser = false;
-            includeplasma = false;
-            radius = 250;
-            wallcheck = false;
-        };
+            enabled = false,
+            includetaser = false,
+            includeplasma = false,
+            radius = 250,
+            wallcheck = false,
+        },
         batonsword = {
-            spamlunge = false;
-            spamswoosh = false;
-        };
-    };
+            spamlunge = false,
+            spamswoosh = false,
+        },
+    },
     visuals = {
         esp_enabled = false,
         esp_police = true,
@@ -104,86 +126,91 @@ getgenv().configs = {
         esp_criminal_color = Color3.fromRGB(255, 80, 80),
         esp_prisoner_color = Color3.fromRGB(255, 165, 0),
         esp_box = true,
-        esp_box_size = 20,
+        esp_skeleton = false,
+        esp_skeleton_size = 2,
         esp_name = true,
         esp_name_size = 14,
         esp_distance = true,
         esp_distance_size = 14,
+        esp_healthbar = false,
+        esp_healthtext = false,
+        esp_healthtext_size = 14,
         esp_lines = false,
         esp_chams = false,
         esp_chams_transparency = 0.5,
         nosky = false,
         snipernoblur = false,
         nogrenadesmoke = false
-    };
+    },
     robberies = {
-        guardnodmg = false;
-    };
-    nametags = {};
+        guardnodmg = false,
+    },
+    nametags = {},
 }
+
 
 -- [ The extensive 'client' table and its associated functions from the original script are included here. ]
 local client = {
-    ropedata = {};
+    ropedata = {},
     lastvehiclestats = {
-        GarageEngineSpeed = nil;
-        Height = nil;
-        TurnSpeed = nil;
-    };
-    lastvehiclemodel = nil;
-    vehicleEntered = false;
-    originalequippeddata = {};
-    doorAddedFunction = getconnections(CollectionService:GetInstanceAddedSignal("Door"))[1].Function;
+        GarageEngineSpeed = nil,
+        Height = nil,
+        TurnSpeed = nil,
+    },
+    lastvehiclemodel = nil,
+    vehicleEntered = false,
+    originalequippeddata = {},
+    doorAddedFunction = getconnections(CollectionService:GetInstanceAddedSignal("Door"))[1].Function,
     remoteid = {
-        punch = key.Punch;
-        taser = key.Taze;
-    };
-    activeaction = {};
+        punch = key.Punch,
+        taser = key.Taze,
+    },
+    activeaction = {},
     ori = {
-        updateseeking = require(ReplicatedStorage.VehicleLink.VehicleLinkBinder)._constructor._updateSeeking;
-        hittargetwithspeed = require(ReplicatedStorage.Module.SimulatedPhysicsProjectile).HitTargetWithSpeed;
-        isflying = require(ReplicatedStorage.Game.Paraglide).IsFlying;
-        tase = require(ReplicatedStorage.Game.Item.Taser).Tase;
-        doesplayerowncached = require(ReplicatedStorage.Game.Gamepass.GamepassSystem).doesPlayerOwnCached;
-        update = require(ReplicatedStorage.Module.UI).CircleAction.Update;
-        getequiptime = require(ReplicatedStorage.Game.GunShop.GunUtils).getEquipTime;
-        rayignorenon = require(ReplicatedStorage.Module.RayCast).RayIgnoreNonCollide;
-        plasmashootother = require(ReplicatedStorage.Game.Item.PlasmaGun).ShootOther;
-        pistolsetupmodel = require(ReplicatedStorage.Game.Item.Pistol).SetupModel;
-        rayignore = require(ReplicatedStorage.Module.RayCast).RayIgnoreNonCollideWithIgnoreList;
-        shoot = require(ReplicatedStorage.Game.Item.Gun).Shoot;
-        attemptToggleCrawling = getupvalue(require(ReplicatedStorage.Game.DefaultActions).crawlButton.onPressed,1).attemptToggleCrawling;
-    };
-    guardnpcbinder = require(ReplicatedStorage.GuardNPC.GuardNPCBinder);
-    combatconst = require(ReplicatedStorage.Combat.CombatConsts);
-    combatutils = require(ReplicatedStorage.Combat.CombatUtils);
-    playerutil = require(ReplicatedStorage.Game.PlayerUtils);
-    actionbuttonservice = require(ReplicatedStorage.ActionButton.ActionButtonService);
-    settingss = require(ReplicatedStorage.Resource.Settings);
-    characterutil = require(ReplicatedStorage.Game.CharacterUtil);
-    paraglide = require(ReplicatedStorage.Game.Paraglide);
-    alexchassis = require(ReplicatedStorage.Module.AlexChassis);
-    itemgun = require(ReplicatedStorage.Game.Item.Gun);
-    itemsys = require(ReplicatedStorage.Game.ItemSystem.ItemSystem);
-    gunutil = require(ReplicatedStorage.Game.GunShop.GunUtils);
-    gamepasssystem = require(ReplicatedStorage.Game.Gamepass.GamepassSystem);
-    pistolitem = require(ReplicatedStorage.Game.Item.Pistol);
-    smokegrenadeitem = require(ReplicatedStorage.Game.SmokeGrenade.SmokeGrenade);
-    circleac = require(ReplicatedStorage.Module.UI).CircleAction;
-    tase = require(ReplicatedStorage.Game.Item.Taser);
-    plasmagun = require(ReplicatedStorage.Game.Item.PlasmaGun);
-    duck = require(ReplicatedStorage.Game.Robbery.TombRobbery.TombRobberySystem).duck;
-    onvehicleentered = require(ReplicatedStorage.Vehicle.VehicleUtils).OnVehicleEntered;
-    onvehicleexited = require(ReplicatedStorage.Vehicle.VehicleUtils).OnVehicleExited;
-    onlocalitemequipped = require(ReplicatedStorage.Game.ItemSystem.ItemSystem).OnLocalItemEquipped;
-    onlocalitemunequipped = require(ReplicatedStorage.Game.ItemSystem.ItemSystem).OnLocalItemUnequipped;
-    bulletonlocalhitplayer = require(ReplicatedStorage.Game.Item.Gun).BulletEmitterOnLocalHitPlayer;
-    vehiclelinkbinder = require(ReplicatedStorage.VehicleLink.VehicleLinkBinder);
-    raycast = require(ReplicatedStorage.Module.RayCast);
+        updateseeking = require(ReplicatedStorage.VehicleLink.VehicleLinkBinder)._constructor._updateSeeking,
+        hittargetwithspeed = require(ReplicatedStorage.Module.SimulatedPhysicsProjectile).HitTargetWithSpeed,
+        isflying = require(ReplicatedStorage.Game.Paraglide).IsFlying,
+        tase = require(ReplicatedStorage.Game.Item.Taser).Tase,
+        doesplayerowncached = require(ReplicatedStorage.Game.Gamepass.GamepassSystem).doesPlayerOwnCached,
+        update = require(ReplicatedStorage.Module.UI).CircleAction.Update,
+        getequiptime = require(ReplicatedStorage.Game.GunShop.GunUtils).getEquipTime,
+        rayignorenon = require(ReplicatedStorage.Module.RayCast).RayIgnoreNonCollide,
+        plasmashootother = require(ReplicatedStorage.Game.Item.PlasmaGun).ShootOther,
+        pistolsetupmodel = require(ReplicatedStorage.Game.Item.Pistol).SetupModel,
+        rayignore = require(ReplicatedStorage.Module.RayCast).RayIgnoreNonCollideWithIgnoreList,
+        shoot = require(ReplicatedStorage.Game.Item.Gun).Shoot,
+        attemptToggleCrawling = getupvalue(require(ReplicatedStorage.Game.DefaultActions).crawlButton.onPressed,1).attemptToggleCrawling,
+    },
+    guardnpcbinder = require(ReplicatedStorage.GuardNPC.GuardNPCBinder),
+    combatconst = require(ReplicatedStorage.Combat.CombatConsts),
+    combatutils = require(ReplicatedStorage.Combat.CombatUtils),
+    playerutil = require(ReplicatedStorage.Game.PlayerUtils),
+    actionbuttonservice = require(ReplicatedStorage.ActionButton.ActionButtonService),
+    settingss = require(ReplicatedStorage.Resource.Settings),
+    characterutil = require(ReplicatedStorage.Game.CharacterUtil),
+    paraglide = require(ReplicatedStorage.Game.Paraglide),
+    alexchassis = require(ReplicatedStorage.Module.AlexChassis),
+    itemgun = require(ReplicatedStorage.Game.Item.Gun),
+    itemsys = require(ReplicatedStorage.Game.ItemSystem.ItemSystem),
+    gunutil = require(ReplicatedStorage.Game.GunShop.GunUtils),
+    gamepasssystem = require(ReplicatedStorage.Game.Gamepass.GamepassSystem),
+    pistolitem = require(ReplicatedStorage.Game.Item.Pistol),
+    smokegrenadeitem = require(ReplicatedStorage.Game.SmokeGrenade.SmokeGrenade),
+    circleac = require(ReplicatedStorage.Module.UI).CircleAction,
+    tase = require(ReplicatedStorage.Game.Item.Taser),
+    plasmagun = require(ReplicatedStorage.Game.Item.PlasmaGun),
+    duck = require(ReplicatedStorage.Game.Robbery.TombRobbery.TombRobberySystem).duck,
+    onvehicleentered = require(ReplicatedStorage.Vehicle.VehicleUtils).OnVehicleEntered,
+    onvehicleexited = require(ReplicatedStorage.Vehicle.VehicleUtils).OnVehicleExited,
+    onlocalitemequipped = require(ReplicatedStorage.Game.ItemSystem.ItemSystem).OnLocalItemEquipped,
+    onlocalitemunequipped = require(ReplicatedStorage.Game.ItemSystem.ItemSystem).OnLocalItemUnequipped,
+    bulletonlocalhitplayer = require(ReplicatedStorage.Game.Item.Gun).BulletEmitterOnLocalHitPlayer,
+    vehiclelinkbinder = require(ReplicatedStorage.VehicleLink.VehicleLinkBinder),
+    raycast = require(ReplicatedStorage.Module.RayCast),
 }
 client.door = {
-    openDoor = getupvalue(getproto(getupvalue(client.doorAddedFunction, 2), 1, true)[1], 7);
-    doors = getupvalue(client.doorAddedFunction, 1);
+    openDoor = getupvalue(getproto(getupvalue(client.doorAddedFunction, 2), 1, true)[1], 7),
+    doors = getupvalue(client.doorAddedFunction, 1),
 }
 client.hittargetwithspeed = require(ReplicatedStorage.Module.SimulatedPhysicsProjectile).HitTargetWithSpeed
 
@@ -216,7 +243,7 @@ for i,v in next, getgc() do
             if infoname == "StopNitro" then
                 client.stopnitro = v
             end
-            if infoname:find("CheatCheck") then
+            if infoname:find("CheatCheck") and pcall(function() return isfunctionhooked end) and isfunctionhooked then
                 hookfunction(v, function() end)
             end
         end
@@ -283,18 +310,7 @@ client.hasKeyCorrection = (function(boolean)
         if isfunctionhooked(client.playerutil.hasKey) then restorefunction(client.playerutil.hasKey) end
     end
 end)
-client.headshotCorrection = (function(boolean)
-    if boolean then
-        epichook = hookfunction(client.bulletonlocalhitplayer, function(...)
-            local bulletshot = {...}
-            bulletshot[15].isWallbang = false
-            bulletshot[15].isHeadshot = true
-            return epichook(...)
-        end)
-    else
-        if isfunctionhooked(client.bulletonlocalhitplayer) then restorefunction(client.bulletonlocalhitplayer) end
-    end
-end)
+
 client.smokeGrenadeHook = (function(boolean)
     if boolean then
         hookfunction(client.smokegrenadeitem._playExplosionFx, function() end)
@@ -494,20 +510,28 @@ client.onHitSurfaceHook = (function()
     end
 end)
 
--- New Walkspeed method
-RunService.RenderStepped:Connect(function()
+-- Noclip Loop (as requested by user)
+RunService.Stepped:Connect(function()
     pcall(function()
-        if configs.player.speedEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-            LocalPlayer.Character.Humanoid.WalkSpeed = configs.player.speedValue
+        if configs.player.noclip then
+            local char = LocalPlayer.Character
+            if char then
+                for _, part in pairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") and part.CanCollide and part.Name ~= "HumanoidRootPart" then
+                        part.CanCollide = false
+                    end
+                end
+            end
         end
     end)
 end)
 
--- Noclip Method
-RunService.Stepped:Connect(function()
+
+-- Walkspeed method
+RunService.RenderStepped:Connect(function()
     pcall(function()
-        if configs.player.noclip and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-            LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.RunningNoPhysics)
+        if configs.player.speedEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+            LocalPlayer.Character.Humanoid.WalkSpeed = configs.player.speedValue
         end
     end)
 end)
@@ -725,56 +749,71 @@ task.spawn(function()
 end)
 
 --================================================================
---==                ESP Logic (with Chams)                      ==
+--==      ESP Logic (REWRITTEN FOR NEW FEATURES)                ==
 --================================================================
 local ESP = { Players = {} }
-
-function ESP:RemoveAll()
-    for player, objects in pairs(self.Players) do
-        self:RemoveForPlayer(player)
-    end
-    self.Players = {}
-end
+local skeletonConnections = {
+    {"Head", "UpperTorso"}, {"UpperTorso", "LowerTorso"}, {"UpperTorso", "LeftUpperArm"},
+    {"LeftUpperArm", "LeftLowerArm"}, {"LeftLowerArm", "LeftHand"}, {"UpperTorso", "RightUpperArm"},
+    {"RightUpperArm", "RightLowerArm"}, {"RightLowerArm", "RightHand"}, {"LowerTorso", "LeftUpperLeg"},
+    {"LeftUpperLeg", "LeftLowerLeg"}, {"LeftLowerLeg", "LeftFoot"}, {"LowerTorso", "RightUpperLeg"},
+    {"RightUpperLeg", "RightLowerLeg"}, {"RightLowerLeg", "RightFoot"}
+}
 
 function ESP:CreateForPlayer(player)
     if self.Players[player] or not player.Character then return end
-    
+
     local highlight = Instance.new("Highlight")
     highlight.Parent = player.Character
     highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     highlight.Enabled = false
 
     local objects = {
-        Box = Drawing.new("Square"), 
-        Name = Drawing.new("Text"), 
-        Distance = Drawing.new("Text"), 
-        Line = Drawing.new("Line"),
-        Highlight = highlight
+        Box = Drawing.new("Square"), Name = Drawing.new("Text"), Distance = Drawing.new("Text"),
+        Line = Drawing.new("Line"), Highlight = highlight, Skeleton = {},
+        HealthBarBG = Drawing.new("Square"), HealthBar = Drawing.new("Square"), HealthText = Drawing.new("Text")
     }
 
-    for id, obj in pairs(objects) do
-        if id ~= "Highlight" then
-             obj.Visible = false
-             obj.ZIndex = 999
-        end
+    for i = 1, #skeletonConnections do
+        local line = Drawing.new("Line")
+        line.Visible = false; line.ZIndex = 998
+        table.insert(objects.Skeleton, line)
     end
-    
-    objects.Box.Thickness = 1
-    objects.Box.Filled = false
-    objects.Name.Font = Drawing.Fonts.UI
-    objects.Name.Center = true
-    objects.Distance.Font = Drawing.Fonts.UI
-    objects.Distance.Center = true
+
+    objects.Box.Thickness = 1; objects.Box.Filled = false
+    objects.Name.Font = Drawing.Fonts.UI; objects.Name.Center = true
+    objects.Distance.Font = Drawing.Fonts.UI; objects.Distance.Center = true
+    objects.HealthText.Font = Drawing.Fonts.UI; objects.HealthText.Center = true
     objects.Line.Thickness = 1
+    
+    objects.HealthBarBG.Filled = true; objects.HealthBarBG.Color = Color3.fromRGB(20, 20, 20); objects.HealthBarBG.ZIndex = 998
+    objects.HealthBar.Filled = true; objects.HealthBar.ZIndex = 999
+
+    for id, obj in pairs(objects) do
+        if type(obj) == "table" or id == "Highlight" then continue end
+        obj.Visible = false; obj.ZIndex = 999
+    end
     self.Players[player] = objects
 end
 
 function ESP:RemoveForPlayer(player)
     if not self.Players[player] then return end
-    for _, obj in pairs(self.Players[player]) do 
-        obj:Destroy() 
+    local objects = self.Players[player]
+    
+    for id, obj in pairs(objects) do
+        if id == "Skeleton" then
+            for _, line in ipairs(obj) do line:Destroy() end
+        elseif obj.Destroy then
+            obj:Destroy()
+        end
     end
     self.Players[player] = nil
+end
+
+function ESP:RemoveAll()
+    for player, _ in pairs(self.Players) do
+        self:RemoveForPlayer(player)
+    end
 end
 
 function ESP:Update()
@@ -783,102 +822,111 @@ function ESP:Update()
         return
     end
 
-    -- ESP Garbage Collection: Remove players who are no longer valid
-    local validPlayers = {}
-    for _, player in ipairs(Players:GetPlayers()) do
-        validPlayers[player] = true
-    end
     for player, _ in pairs(self.Players) do
-        if not validPlayers[player] then
+        if not player or not player:IsDescendantOf(Players) then
             self:RemoveForPlayer(player)
         end
     end
-    
+
     local localCharacter = LocalPlayer.Character
     if not localCharacter or not localCharacter:FindFirstChild("HumanoidRootPart") then return end
     local localHRP = localCharacter.HumanoidRootPart
     local camera = Workspace.CurrentCamera
-    
+
     for _, player in ipairs(Players:GetPlayers()) do
-        local isVisible = false
+        local shouldDraw = false
         if player ~= LocalPlayer then
             local character = player.Character
             local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-            
-            if character and humanoid and humanoid.Health > 0 and character:FindFirstChild("HumanoidRootPart") then
+
+            if character and humanoid and humanoid.Health > 0 then
                 local teamName = tostring(player.Team)
                 local isTeamEnabled = (teamName == "Police" and configs.visuals.esp_police) or
                                       (teamName == "Criminal" and configs.visuals.esp_criminal) or
                                       (teamName == "Prisoner" and configs.visuals.esp_prisoner)
-                
-                if not configs.visuals.esp_police and not configs.visuals.esp_criminal and not configs.visuals.esp_prisoner then
-                    isTeamEnabled = true
-                end
-                
-                if isTeamEnabled then
-                    isVisible = true
-                    local hrp = character.HumanoidRootPart
-                    local head = character:FindFirstChild("Head")
-                    
-                    if hrp and head then
-                        local headPos = camera:WorldToViewportPoint(head.Position)
-                        
-                        if not self.Players[player] then self:CreateForPlayer(player) end
-                        local espObjects = self.Players[player]
-                        
-                        if not espObjects then continue end
-                        
-                        local legPos = camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0))
-                        
-                        local height = math.abs(headPos.Y - legPos.Y) * (configs.visuals.esp_box_size / 20)
-                        local width = height / 2
-                        local boxPos = Vector2.new(headPos.X - width / 2, headPos.Y)
-                        local boxSize = Vector2.new(width, height)
-                        
-                        local espColor
-                        if teamName == "Police" then espColor = configs.visuals.esp_police_color
-                        elseif teamName == "Criminal" then espColor = configs.visuals.esp_criminal_color
-                        elseif teamName == "Prisoner" then espColor = configs.visuals.esp_prisoner_color
-                        else espColor = Color3.new(1,1,1) end
 
-                        if espObjects.Highlight and espObjects.Highlight.Parent then
-                            espObjects.Highlight.Enabled = configs.visuals.esp_chams
-                            if configs.visuals.esp_chams then
-                                espObjects.Highlight.FillColor = espColor
-                                espObjects.Highlight.OutlineColor = espColor
-                                espObjects.Highlight.FillTransparency = configs.visuals.esp_chams_transparency
-                                espObjects.Highlight.OutlineTransparency = math.max(0, configs.visuals.esp_chams_transparency - 0.2)
+                if isTeamEnabled then
+                    local head = character:FindFirstChild("Head")
+                    local hrp = character:FindFirstChild("HumanoidRootPart")
+
+                    if head and hrp then
+                        local _, onScreen = camera:WorldToViewportPoint(head.Position)
+                        if onScreen then
+                            shouldDraw = true
+                            if not self.Players[player] then self:CreateForPlayer(player) end
+                            local espObjects = self.Players[player]
+
+                            if espObjects and espObjects.Highlight.Parent then
+                                local espColor = (teamName == "Police" and configs.visuals.esp_police_color) or
+                                                 (teamName == "Criminal" and configs.visuals.esp_criminal_color) or
+                                                 configs.visuals.esp_prisoner_color
+                                
+                                local headPos, legPos = camera:WorldToViewportPoint(head.Position), camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0))
+                                local height, width = math.abs(headPos.Y - legPos.Y), math.abs(headPos.Y - legPos.Y) / 2
+                                
+                                espObjects.Box.Visible = configs.visuals.esp_box; espObjects.Box.Color = espColor
+                                espObjects.Box.Position = Vector2.new(headPos.X - width / 2, headPos.Y); espObjects.Box.Size = Vector2.new(width, height)
+                                
+                                espObjects.Name.Visible = configs.visuals.esp_name; espObjects.Name.Text = player.Name
+                                espObjects.Name.Color = espColor; espObjects.Name.Size = configs.visuals.esp_name_size
+                                espObjects.Name.Position = Vector2.new(headPos.X, headPos.Y - (configs.visuals.esp_name_size / 2) - 4)
+                                
+                                local distance = math.floor((localHRP.Position - hrp.Position).Magnitude)
+                                espObjects.Distance.Visible = configs.visuals.esp_distance; espObjects.Distance.Text = `[{distance}m]`
+                                espObjects.Distance.Color = espColor; espObjects.Distance.Size = configs.visuals.esp_distance_size
+                                espObjects.Distance.Position = Vector2.new(headPos.X, legPos.Y + (configs.visuals.esp_distance_size / 2) + 2)
+                                
+                                espObjects.Line.Visible = configs.visuals.esp_lines; espObjects.Line.Color = espColor
+                                espObjects.Line.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y); espObjects.Line.To = Vector2.new(headPos.X, legPos.Y)
+                                
+                                espObjects.Highlight.Enabled = configs.visuals.esp_chams
+                                if configs.visuals.esp_chams then
+                                    espObjects.Highlight.FillColor = espColor; espObjects.Highlight.OutlineColor = espColor
+                                    espObjects.Highlight.FillTransparency = configs.visuals.esp_chams_transparency
+                                    espObjects.Highlight.OutlineTransparency = math.max(0, configs.visuals.esp_chams_transparency - 0.2)
+                                end
+                                
+                                espObjects.HealthBar.Visible, espObjects.HealthBarBG.Visible = configs.visuals.esp_healthbar, configs.visuals.esp_healthbar
+                                if configs.visuals.esp_healthbar then
+                                    local healthPercent, barWidth = humanoid.Health / humanoid.MaxHealth, 4
+                                    espObjects.HealthBarBG.Position = Vector2.new(espObjects.Box.Position.X - barWidth - 2, espObjects.Box.Position.Y)
+                                    espObjects.HealthBarBG.Size = Vector2.new(barWidth, height)
+                                    espObjects.HealthBar.Color = Color3.fromHSV(healthPercent * 0.33, 1, 1)
+                                    espObjects.HealthBar.Size = Vector2.new(barWidth, height * healthPercent)
+                                    espObjects.HealthBar.Position = Vector2.new(espObjects.Box.Position.X - barWidth - 2, espObjects.Box.Position.Y + (height - (height * healthPercent)))
+                                end
+
+                                espObjects.HealthText.Visible = configs.visuals.esp_healthtext
+                                if configs.visuals.esp_healthtext then
+                                    espObjects.HealthText.Text = tostring(math.floor(humanoid.Health)) .. " HP"; espObjects.HealthText.Color = espColor
+                                    espObjects.HealthText.Size = configs.visuals.esp_healthtext_size
+                                    local yOffset = espObjects.Distance.Position.Y + (configs.visuals.esp_distance_size / 2) + (configs.visuals.esp_healthtext_size / 2) + 2
+                                    espObjects.HealthText.Position = Vector2.new(headPos.X, yOffset)
+                                end
+
+                                for i, connection in ipairs(skeletonConnections) do
+                                    local p1, p2 = character:FindFirstChild(connection[1]), character:FindFirstChild(connection[2])
+                                    local line = espObjects.Skeleton[i]
+                                    if configs.visuals.esp_skeleton and p1 and p2 then
+                                        local pos1, onScreen1 = camera:WorldToViewportPoint(p1.Position); local pos2, onScreen2 = camera:WorldToViewportPoint(p2.Position)
+                                        if onScreen1 and onScreen2 then
+                                            line.From, line.To = Vector2.new(pos1.X, pos1.Y), Vector2.new(pos2.X, pos2.Y)
+                                            line.Color, line.Visible, line.Thickness = espColor, true, configs.visuals.esp_skeleton_size
+                                        else
+                                            line.Visible = false
+                                        end
+                                    else
+                                        line.Visible = false
+                                    end
+                                end
                             end
                         end
-                        
-                        espObjects.Box.Visible = configs.visuals.esp_box
-                        espObjects.Box.Position = boxPos
-                        espObjects.Box.Size = boxSize
-                        espObjects.Box.Color = espColor
-                        
-                        espObjects.Name.Visible = configs.visuals.esp_name
-                        espObjects.Name.Text = player.Name
-                        espObjects.Name.Color = espColor
-                        espObjects.Name.Size = configs.visuals.esp_name_size
-                        espObjects.Name.Position = Vector2.new(headPos.X, headPos.Y - (configs.visuals.esp_name_size / 2) - 4)
-                        
-                        local distance = math.floor((localHRP.Position - hrp.Position).Magnitude)
-                        espObjects.Distance.Visible = configs.visuals.esp_distance
-                        espObjects.Distance.Text = `[{distance}m]`
-                        espObjects.Distance.Color = espColor
-                        espObjects.Distance.Size = configs.visuals.esp_distance_size
-                        espObjects.Distance.Position = Vector2.new(headPos.X, legPos.Y + (configs.visuals.esp_distance_size / 2) + 2)
-                        
-                        espObjects.Line.Visible = configs.visuals.esp_lines
-                        espObjects.Line.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
-                        espObjects.Line.To = Vector2.new(headPos.X, headPos.Y)
-                        espObjects.Line.Color = espColor
                     end
                 end
             end
         end
-        if not isVisible and self.Players[player] then 
-            self:RemoveForPlayer(player) 
+        if not shouldDraw and self.Players[player] then
+            self:RemoveForPlayer(player)
         end
     end
 end
@@ -891,23 +939,22 @@ Players.PlayerAdded:Connect(function(player)
     end)
 end)
 
-Players.PlayerRemoving:Connect(function(player) 
-    ESP:RemoveForPlayer(player) 
+Players.PlayerRemoving:Connect(function(player)
+    ESP:RemoveForPlayer(player)
 end)
 
-RunService.RenderStepped:Connect(function() 
-    pcall(ESP.Update, ESP) 
+RunService.RenderStepped:Connect(function()
+    pcall(ESP.Update, ESP)
 end)
-
 
 --================================================================
---==                    Fluent UI Construction                    ==
+--==                Fluent UI Construction                      ==
 --================================================================
 local Window = Fluent:CreateWindow({
     Title = "8Bit Jailbreak",
     SubTitle = "by New_Jmaster",
     TabWidth = 160,
-    Size = UDim2.fromOffset(580, 500),
+    Size = UDim2.fromOffset(580, 520),
     Acrylic = true,
     Theme = "Aqua",
     MinimizeKey = Enum.KeyCode.RightControl
@@ -922,7 +969,6 @@ local Tabs = {
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 
--- Wrapping UI creation in pcalls to prevent one error from breaking the whole UI
 local function safeCreate(tabName, createFunction)
     local success, err = pcall(createFunction)
     if not success then
@@ -936,14 +982,14 @@ safeCreate("Player", function()
     local infJumpToggle = Tabs.Player:AddToggle("PlayerInfJump", {Title = "Infinite Jump", Default = configs.player.infjump})
     infJumpToggle:OnChanged(function(value) configs.player.infjump = value end)
     
-    local speedSlider = Tabs.Player:AddSlider("PlayerSpeed", {Title = "WalkSpeed", Default = configs.player.speedValue, Min = 1, Max = 200, Rounding = 0})
+    local speedSlider = Tabs.Player:AddSlider("PlayerSpeed", {Title = "WalkSpeed", Default = configs.player.speedValue, Min = 1, Max = 205, Rounding = 0})
     speedSlider:OnChanged(function(value) configs.player.speedValue = value end)
     
     local speedToggle = Tabs.Player:AddToggle("PlayerSpeedEnabled", {Title = "Enable WalkSpeed", Default = configs.player.speedEnabled})
     speedToggle:OnChanged(function(value) 
         configs.player.speedEnabled = value
         if not value and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-            LocalPlayer.Character.Humanoid.WalkSpeed = 16 -- Revert to default
+            LocalPlayer.Character.Humanoid.WalkSpeed = 16
         end
     end)
     
@@ -962,7 +1008,10 @@ safeCreate("Player", function()
     end)
     
     local noClip = Tabs.Player:AddToggle("PlayerNoClip", {Title = "No Clip", Default = configs.player.noclip})
-    noClip:OnChanged(function(value) configs.player.noclip = value end)
+    noClip:OnChanged(function(value)
+        configs.player.noclip = value
+    end)
+    Tabs.Player:AddParagraph({Title = "", Content = "Allows you to walk through walls. May not work on all objects."})
     
     local noStun = Tabs.Player:AddToggle("PlayerNoStun", {Title = "No Ragdoll Stun", Default = configs.player.nostun})
     noStun:OnChanged(function(value) 
@@ -999,7 +1048,7 @@ end)
 
 safeCreate("Vehicle", function()
     Tabs.Vehicle:AddParagraph({Title = "Vehicle Flight", Content = "Take to the skies in any land vehicle."})
-    local flightSpeed = Tabs.Vehicle:AddSlider("VehicleFlightSpeed", {Title = "Flight Speed", Default = configs.vehicle.fspeed, Min = 10, Max = 1000, Rounding = 0})
+    local flightSpeed = Tabs.Vehicle:AddSlider("VehicleFlightSpeed", {Title = "Flight Speed", Default = configs.vehicle.fspeed, Min = 10, Max = 2000, Rounding = 0})
     flightSpeed:OnChanged(function(value) configs.vehicle.fspeed = value end)
     local flightX = Tabs.Vehicle:AddSlider("VehicleFlightX", {Title = "Flight Rotation X", Default = configs.vehicle.fx, Min = 0, Max = 360, Rounding = 0})
     flightX:OnChanged(function(value) configs.vehicle.fx = value end)
@@ -1038,7 +1087,7 @@ safeCreate("Vehicle", function()
         configs.vehicle.engine = value
         if not value then client.updateToOriginalChassisStats() end
     end)
-    local suspensionHeight = Tabs.Vehicle:AddSlider("VehicleSuspensionHeight", {Title = "Suspension Height", Default = configs.vehicle.suspensionhe, Min = 0, Max = 150, Rounding = 0})
+    local suspensionHeight = Tabs.Vehicle:AddSlider("VehicleSuspensionHeight", {Title = "Suspension Height", Default = configs.vehicle.suspensionhe, Min = 0, Max = 50000, Rounding = 0})
     suspensionHeight:OnChanged(function(value) configs.vehicle.suspensionhe = value end)
     local suspensionTog = Tabs.Vehicle:AddToggle("VehicleSuspensionTog", {Title = "Apply Suspension Height", Default = configs.vehicle.suspension})
     suspensionTog:OnChanged(function(value)
@@ -1060,10 +1109,22 @@ safeCreate("Vehicle", function()
     local heliBreak = Tabs.Vehicle:AddToggle("VehicleHeliBreak", {Title = "Anti Heli Break", Default = configs.vehicle.helibreak})
     heliBreak:OnChanged(function(value) configs.vehicle.helibreak = value end)
     local heliPick = Tabs.Vehicle:AddToggle("VehicleHeliPick", {Title = "Instant Pickup", Default = configs.vehicle.helipick})
-    heliPick:OnChanged(function(value) configs.vehicle.helipick = value end)
+    heliPick:OnChanged(function(value) configs.vehicle.helipick = value end
 end)
 
 safeCreate("Combat", function()
+    Tabs.Combat:AddParagraph({Title = "Silent Aim", Content = "Unoptimized, may not work as expected."})
+    local saEnabled = Tabs.Combat:AddToggle("CombatSA_Enabled", {Title = "Enabled", Default = configs.combat.silentaim.enabled})
+    saEnabled:OnChanged(function(value) configs.combat.silentaim.enabled = value end)
+    local saIncTaser = Tabs.Combat:AddToggle("CombatSA_IncludeTaser", {Title = "Include Taser", Default = configs.combat.silentaim.includetaser})
+    saIncTaser:OnChanged(function(value) configs.combat.silentaim.includetaser = value end)
+    local saIncPlasma = Tabs.Combat:AddToggle("CombatSA_IncludePlasma", {Title = "Include Plasma Gun", Default = configs.combat.silentaim.includeplasma})
+    saIncPlasma:OnChanged(function(value) configs.combat.silentaim.includeplasma = value end)
+    local saRadius = Tabs.Combat:AddSlider("CombatSA_Radius", {Title = "Radius", Default = configs.combat.silentaim.radius, Min = 10, Max = 1000, Rounding = 0})
+    saRadius:OnChanged(function(value) configs.combat.silentaim.radius = value; Circle.Radius = value end)
+    local saWallcheck = Tabs.Combat:AddToggle("CombatSA_Wallcheck", {Title = "Wallcheck", Default = configs.combat.silentaim.wallcheck})
+    saWallcheck:OnChanged(function(value) configs.combat.silentaim.wallcheck = value end)
+    
     Tabs.Combat:AddParagraph({Title = "Weapon Mods", Content = ""})
     local alwaysAuto = Tabs.Combat:AddToggle("CombatAlwaysAuto", {Title = "Always Auto", Default = configs.combat.alwaysauto})
     alwaysAuto:OnChanged(function(value) configs.combat.alwaysauto = value end)
@@ -1095,18 +1156,6 @@ safeCreate("Combat", function()
         configs.combat.batonsword.spamlunge = value
         if value then task.spawn(client.spamBatonSwordLunge) end
     end)
-
-    Tabs.Combat:AddParagraph({Title = "Silent Aim", Content = "Unoptimized, may not work as expected."})
-    local saEnabled = Tabs.Combat:AddToggle("CombatSA_Enabled", {Title = "Enabled", Default = configs.combat.silentaim.enabled})
-    saEnabled:OnChanged(function(value) configs.combat.silentaim.enabled = value end)
-    local saIncTaser = Tabs.Combat:AddToggle("CombatSA_IncludeTaser", {Title = "Include Taser", Default = configs.combat.silentaim.includetaser})
-    saIncTaser:OnChanged(function(value) configs.combat.silentaim.includetaser = value end)
-    local saIncPlasma = Tabs.Combat:AddToggle("CombatSA_IncludePlasma", {Title = "Include Plasma Gun", Default = configs.combat.silentaim.includeplasma})
-    saIncPlasma:OnChanged(function(value) configs.combat.silentaim.includeplasma = value end)
-    local saRadius = Tabs.Combat:AddSlider("CombatSA_Radius", {Title = "Radius", Default = configs.combat.silentaim.radius, Min = 10, Max = 1000, Rounding = 0})
-    saRadius:OnChanged(function(value) configs.combat.silentaim.radius = value; Circle.Radius = value end)
-    local saWallcheck = Tabs.Combat:AddToggle("CombatSA_Wallcheck", {Title = "Wallcheck", Default = configs.combat.silentaim.wallcheck})
-    saWallcheck:OnChanged(function(value) configs.combat.silentaim.wallcheck = value end)
     
     Tabs.Combat:AddParagraph({Title = "Other", Content = ""})
     local noSniperBlur = Tabs.Combat:AddToggle("CombatSniperNoBlur", {Title = "No Sniper Scope Blur", Default = configs.visuals.snipernoblur})
@@ -1137,18 +1186,26 @@ safeCreate("Visuals", function()
     espName:OnChanged(function(value) configs.visuals.esp_name = value end)
     local espDist = Tabs.Visuals:AddToggle("EspDist", {Title = "Distance", Default = configs.visuals.esp_distance})
     espDist:OnChanged(function(value) configs.visuals.esp_distance = value end)
+    local espHealthBar = Tabs.Visuals:AddToggle("EspHealthBar", {Title = "Health Bar", Default = configs.visuals.esp_healthbar})
+    espHealthBar:OnChanged(function(value) configs.visuals.esp_healthbar = value end)
+    local espHealthText = Tabs.Visuals:AddToggle("EspHealthText", {Title = "Health Text", Default = configs.visuals.esp_healthtext})
+    espHealthText:OnChanged(function(value) configs.visuals.esp_healthtext = value end)
+    local espSkeleton = Tabs.Visuals:AddToggle("EspSkeleton", {Title = "Skeleton", Default = configs.visuals.esp_skeleton})
+    espSkeleton:OnChanged(function(value) configs.visuals.esp_skeleton = value end)
     local espLines = Tabs.Visuals:AddToggle("EspLines", {Title = "Tracer Lines", Default = configs.visuals.esp_lines})
     espLines:OnChanged(function(value) configs.visuals.esp_lines = value end)
     local espChams = Tabs.Visuals:AddToggle("EspChams", {Title = "Chams (Highlight)", Default = configs.visuals.esp_chams})
     espChams:OnChanged(function(value) configs.visuals.esp_chams = value end)
 
     Tabs.Visuals:AddParagraph({Title = "ESP Customization", Content = ""})
-    local espBoxSize = Tabs.Visuals:AddSlider("EspBoxSize", {Title = "Box Size", Default = configs.visuals.esp_box_size, Min = 1, Max = 300, Rounding = 0})
-    espBoxSize:OnChanged(function(value) configs.visuals.esp_box_size = value end)
-    local espNameSize = Tabs.Visuals:AddSlider("EspNameSize", {Title = "Name Size", Default = configs.visuals.esp_name_size, Min = 1, Max = 300, Rounding = 0})
+    local espNameSize = Tabs.Visuals:AddSlider("EspNameSize", {Title = "Name Size", Default = configs.visuals.esp_name_size, Min = 1, Max = 1000, Rounding = 0})
     espNameSize:OnChanged(function(value) configs.visuals.esp_name_size = value end)
-    local espDistSize = Tabs.Visuals:AddSlider("EspDistSize", {Title = "Distance Size", Default = configs.visuals.esp_distance_size, Min = 1, Max = 300, Rounding = 0})
+    local espDistSize = Tabs.Visuals:AddSlider("EspDistSize", {Title = "Distance Size", Default = configs.visuals.esp_distance_size, Min = 1, Max = 1000, Rounding = 0})
     espDistSize:OnChanged(function(value) configs.visuals.esp_distance_size = value end)
+    local espHealthTextSize = Tabs.Visuals:AddSlider("EspHealthTextSize", {Title = "Health Text Size", Default = configs.visuals.esp_healthtext_size, Min = 1, Max = 1000, Rounding = 0})
+    espHealthTextSize:OnChanged(function(value) configs.visuals.esp_healthtext_size = value end)
+    local espSkeletonSize = Tabs.Visuals:AddSlider("EspSkeletonSize", {Title = "Skeleton Size", Default = configs.visuals.esp_skeleton_size, Min = 1, Max = 1000, Rounding = 0})
+    espSkeletonSize:OnChanged(function(value) configs.visuals.esp_skeleton_size = value end)
     local chamsTrans = Tabs.Visuals:AddSlider("EspChamsTrans", {Title = "Chams Transparency", Default = configs.visuals.esp_chams_transparency, Min = 0, Max = 1, Rounding = 2})
     chamsTrans:OnChanged(function(value) configs.visuals.esp_chams_transparency = value end)
 
@@ -1201,10 +1258,7 @@ safeCreate("Settings", function()
     SaveManager:BuildConfigSection(Tabs.Settings)
 end)
 
--- Select the first tab to open
 Window:SelectTab(1)
-
--- Load the auto-load config if it exists
 SaveManager:LoadAutoloadConfig()
 
 Fluent:Notify({
@@ -1213,7 +1267,6 @@ Fluent:Notify({
     Duration = 5
 })
 
--- Initialize states that depend on configs
 client.hasKeyCorrection(configs.player.bypasskd)
 if configs.player.norag and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("HumanoidRootPart") then
     LocalPlayer.Character.HumanoidRootPart:AddTag("NoRagdoll")
