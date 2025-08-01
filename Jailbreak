@@ -1109,7 +1109,7 @@ safeCreate("Vehicle", function()
     local heliBreak = Tabs.Vehicle:AddToggle("VehicleHeliBreak", {Title = "Anti Heli Break", Default = configs.vehicle.helibreak})
     heliBreak:OnChanged(function(value) configs.vehicle.helibreak = value end)
     local heliPick = Tabs.Vehicle:AddToggle("VehicleHeliPick", {Title = "Instant Pickup", Default = configs.vehicle.helipick})
-    heliPick:OnChanged(function(value) configs.vehicle.helipick = value end
+    heliPick:OnChanged(function(value) configs.vehicle.helipick = value end)
 end)
 
 safeCreate("Combat", function()
