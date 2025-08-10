@@ -973,7 +973,7 @@ local function safeCreate(tabName, createFunction)
     local success, err = pcall(createFunction)
     if not success then
         warn("Fluent UI Error [" .. tabName .. "]: " .. tostring(err))
-        Fluent:Notify({ Title = "UI Error", Content = "The '" .. tabName .. "' tab failed to load. Check F9 console for details.", Duration = 10})
+        Fluent:Notify({ Title = "UI Error", Content = "The '" .. tabName .. "' ui failed to load. Please re execute.", Duration = 10})
     end
 end
 
